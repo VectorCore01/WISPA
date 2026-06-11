@@ -1,6 +1,6 @@
 import { useState } from "react";
 import WaspLock from "./WaspLock.jsx";
-import { FACE_DISPLAY, FACE_MONO, ENGRAVE } from "../lib/theme.js";
+import { FACE_UI, FACE_MONO, ENGRAVE } from "../lib/theme.js";
 import { t } from "../lib/translations.js";
 
 export default function Onboard({ C, lang, seed, confirmed, setConfirmed, onFinish, onBack }) {
@@ -10,7 +10,7 @@ export default function Onboard({ C, lang, seed, confirmed, setConfirmed, onFini
       <button onClick={onBack} style={{ background: "transparent", color: C.textDim, fontSize: 13, marginBottom: 20 }}>← {t(lang, "Back")}</button>
       <div style={{ textAlign: "center", marginBottom: 26 }}>
         <WaspLock size={60} C={C} />
-        <h2 style={{ fontFamily: FACE_DISPLAY, fontSize: 30, fontWeight: 700, ...ENGRAVE, letterSpacing: "0.14em", margin: "14px 0 6px" }}>{t(lang, "Your 24 words")}</h2>
+        <h2 style={{ fontFamily: FACE_UI, fontSize: 30, fontWeight: 700, ...ENGRAVE, letterSpacing: "0.14em", margin: "14px 0 6px" }}>{t(lang, "Your 24 words")}</h2>
         <p style={{ color: C.textDim, fontSize: 15, lineHeight: 1.6 }}>
           {t(lang, "These words are your only way back. There's no name, email or phone tied to your WISP — so if you lose these, no one can recover it. Keep them offline.")}
         </p>

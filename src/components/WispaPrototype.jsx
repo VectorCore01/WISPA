@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { THEMES, honeycombBg } from "../lib/theme.js";
+import { THEMES, FACE_UI, honeycombBg } from "../lib/theme.js";
 import { genSeed, genWispId, genHiveId, genMsgKey, genHiveKey, nowTime, seedCells, seedHiveMembers, lookupPeer, capPerSender, CELL_MSG_PER_SENDER } from "../lib/helpers.js";
 import { t } from "../lib/translations.js";
 import Landing from "./Landing.jsx";
@@ -186,7 +186,7 @@ export default function WispaPrototype() {
 
   return (
     <div style={{
-      fontFamily: "'SF Mono', 'Consolas', 'Menlo', 'Courier New', monospace",
+      fontFamily: FACE_UI,
       background: C.bg,
       color: C.text,
       minHeight: "100vh",

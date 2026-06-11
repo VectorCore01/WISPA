@@ -1,5 +1,5 @@
 import WaspLock from "./WaspLock.jsx";
-import { FACE_DISPLAY, FACE_MONO, ENGRAVE, HEX_CLIP, HIVE_PRICE, honeycombBg } from "../lib/theme.js";
+import { FACE_UI, FACE_MONO, ENGRAVE, HEX_CLIP, HIVE_PRICE, honeycombBg } from "../lib/theme.js";
 import { TermHead, Panel } from "./shared.jsx";
 
 export default function BecomePro({ C, startUpgrade }) {
@@ -11,7 +11,7 @@ export default function BecomePro({ C, startUpgrade }) {
         <div style={{ position: "absolute", inset: 0, backgroundImage: honeycombBg(C.lineSoft), backgroundSize: "56px 96px", opacity: 0.5 }} />
         <div style={{ position: "relative" }}>
           <WaspLock size={64} C={C} />
-          <div style={{ fontFamily: FACE_DISPLAY, fontSize: 26, fontWeight: 700, ...ENGRAVE, letterSpacing: "0.12em", marginTop: 10 }}>Get WISP Pro</div>
+          <div style={{ fontFamily: FACE_UI, fontSize: 26, fontWeight: 700, ...ENGRAVE, letterSpacing: "0.12em", marginTop: 10 }}>Get WISP Pro</div>
           <p style={{ color: C.textDim, fontSize: 14, lineHeight: 1.6, maxWidth: 360, margin: "10px auto 0" }}>
             A Hive is a channel only WISP Pro can run. Upgrade to unlock it —
             then open your own channel and post anything you like.

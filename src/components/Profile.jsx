@@ -1,6 +1,6 @@
 import { useState } from "react";
 import WaspLock from "./WaspLock.jsx";
-import { FACE_DISPLAY, FACE_MONO, ENGRAVE } from "../lib/theme.js";
+import { FACE_UI, FACE_MONO, ENGRAVE } from "../lib/theme.js";
 import { t } from "../lib/translations.js";
 
 export default function Profile({ C, lang, username, setUsername, loginPass, setLoginPass, onContinue, onBack }) {
@@ -30,7 +30,7 @@ export default function Profile({ C, lang, username, setUsername, loginPass, set
 
       <div style={{ textAlign: "center", marginBottom: 26 }}>
         <WaspLock size={60} C={C} />
-        <h2 style={{ fontFamily: FACE_DISPLAY, fontSize: 30, fontWeight: 700, ...ENGRAVE, letterSpacing: "0.14em", margin: "14px 0 6px" }}>{t(lang, "Set up your identity")}</h2>
+        <h2 style={{ fontFamily: FACE_UI, fontSize: 30, fontWeight: 700, ...ENGRAVE, letterSpacing: "0.14em", margin: "14px 0 6px" }}>{t(lang, "Set up your identity")}</h2>
         <p style={{ color: C.textDim, fontSize: 15, lineHeight: 1.6 }}>
           {t(lang, "Choose a name to chat under and a password to log back in. You'll get a WISP id and a 6-digit message key right after.")}
         </p>
