@@ -5,7 +5,7 @@ import AccountTab from "./AccountTab.jsx";
 import { FACE_MONO, ENGRAVE } from "../lib/theme.js";
 
 export default function AppShell(props) {
-  const { C, wispId, tab, setTab, setScreen } = props;
+  const { C, myId, isPro, tab, setTab, setScreen } = props;
   const tabs = [["cells", "Cells"], ["hive", "Hive"], ["account", "Account"]];
   return (
     <div style={{ maxWidth: 760, margin: "0 auto", paddingBottom: 90 }}>
@@ -14,7 +14,10 @@ export default function AppShell(props) {
           <WaspLock size={28} C={C} />
           <span style={{ fontFamily: FACE_MONO, color: C.text, fontSize: 17, fontWeight: 700, letterSpacing: "0.3em" }}>WISPA</span>
         </button>
-        <div style={{ fontSize: 12, color: C.textDim, fontFamily: FACE_MONO }}>{wispId}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: FACE_MONO }}>
+          <span style={{ fontSize: 11, color: isPro ? C.accent : C.textDim, ...ENGRAVE, letterSpacing: "0.1em" }}>{isPro ? "WISP PRO" : "WISP"}</span>
+          <span style={{ fontSize: 12, color: C.textDim }}>{myId}</span>
+        </div>
       </div>
 
       <div style={{ padding: "22px" }}>

@@ -182,6 +182,137 @@ const T = {
     ru: "WISP восстановлен. С возвращением.",
     uk: "WISP відновлено. З поверненням.",
   },
+  "Set up your identity": {
+    en: "Set up your identity",
+    de: "Richte dein Profil ein",
+  },
+  "Choose a name to chat under and a password. Others can only open a cell with you if they know your id and this password.": {
+    en: "Choose a name to chat under and a password. Others can only open a cell with you if they know your id and this password.",
+    de: "Wähle einen Namen, unter dem du chattest, und ein Kennwort. Andere können nur dann eine Zelle mit dir öffnen, wenn sie deine ID und dieses Kennwort kennen.",
+  },
+  "Start free": {
+    en: "Start free", de: "Gratis starten",
+  },
+  "Start free as a BEE. Log in with your 24 words if you're already a WISP.": {
+    en: "Start free as a BEE. Log in with your 24 words if you're already a WISP.",
+    de: "Starte gratis als BEE. Melde dich mit deinen 24 Wörtern an, wenn du bereits ein WISP bist.",
+  },
+  "Your free BEE is ready. It fades if you stay quiet.": {
+    en: "Your free BEE is ready. It fades if you stay quiet.",
+    de: "Deine gratis BEE ist bereit. Sie verschwindet, wenn du still bleibst.",
+  },
+  "You're a WISP now. Permanent — and you can run a Hive.": {
+    en: "You're a WISP now. Permanent — and you can run a Hive.",
+    de: "Du bist jetzt ein WISP. Dauerhaft — und du kannst einen Hive betreiben.",
+  },
+  "Hive channel created.": {
+    en: "Hive channel created.", de: "Hive-Channel erstellt.",
+  },
+  "Only a WISP can change its name.": {
+    en: "Only a WISP can change its name.",
+    de: "Nur ein WISP kann seinen Namen ändern.",
+  },
+  "Name updated.": {
+    en: "Name updated.", de: "Name aktualisiert.",
+  },
+  Username: {
+    en: "Username",
+    de: "Benutzername",
+  },
+  "the name people see": {
+    en: "the name people see",
+    de: "der Name, den andere sehen",
+  },
+  "Your password": {
+    en: "Your password",
+    de: "Dein Kennwort",
+  },
+  "others need this to reach you": {
+    en: "others need this to reach you",
+    de: "andere brauchen das, um dich zu erreichen",
+  },
+  "Share this password only with people you actually want to hear from.": {
+    en: "Share this password only with people you actually want to hear from.",
+    de: "Teile dieses Kennwort nur mit Personen, von denen du wirklich hören möchtest.",
+  },
+  Continue: {
+    en: "Continue",
+    de: "Weiter",
+  },
+  "Pick a username with at least 3 characters.": {
+    en: "Pick a username with at least 3 characters.",
+    de: "Wähle einen Benutzernamen mit mindestens 3 Zeichen.",
+  },
+  "Your password needs at least 4 characters.": {
+    en: "Your password needs at least 4 characters.",
+    de: "Dein Kennwort braucht mindestens 4 Zeichen.",
+  },
+  "No WISP found with that id.": {
+    en: "No WISP found with that id.",
+    de: "Kein WISP mit dieser ID gefunden.",
+  },
+  "Wrong password — you can't open a cell with them.": {
+    en: "Wrong password — you can't open a cell with them.",
+    de: "Falsches Kennwort — du kannst keine Zelle mit ihnen öffnen.",
+  },
+  "Wrong message key — you can't open a cell with them.": {
+    en: "Wrong message key — you can't open a cell with them.",
+    de: "Falscher Nachrichten-Key — du kannst keine Zelle mit ihnen öffnen.",
+  },
+  "Wrong message key — you can't reply yet.": {
+    en: "Wrong message key — you can't reply yet.",
+    de: "Falscher Nachrichten-Key — du kannst noch nicht antworten.",
+  },
+  "Choose a name to chat under and a password to log back in. You'll get a WISP id and a 6-digit message key right after.": {
+    en: "Choose a name to chat under and a password to log back in. You'll get a WISP id and a 6-digit message key right after.",
+    de: "Wähle einen Namen, unter dem du chattest, und ein Passwort zum erneuten Anmelden. Direkt danach bekommst du eine WISP-ID und einen 6-stelligen Nachrichten-Key.",
+  },
+  "Login password": {
+    en: "Login password", de: "Login-Passwort",
+  },
+  "you'll log in with your id + this password": {
+    en: "you'll log in with your id + this password",
+    de: "du meldest dich mit deiner ID + diesem Passwort an",
+  },
+  "Keep this password safe — a free WISP has no 24-word key to fall back on.": {
+    en: "Keep this password safe — a free WISP has no 24-word key to fall back on.",
+    de: "Bewahre dieses Passwort gut auf — eine freie WISP hat keinen 24-Wörter-Key als Rückfallebene.",
+  },
+  "Start free as a WISP. Log in if you already have an account.": {
+    en: "Start free as a WISP. Log in if you already have an account.",
+    de: "Starte gratis als WISP. Melde dich an, wenn du bereits ein Konto hast.",
+  },
+  "Your free WISP is ready.": {
+    en: "Your free WISP is ready.", de: "Deine gratis WISP ist bereit.",
+  },
+  "You're WISP Pro now. Videos, files and your own Hive are unlocked.": {
+    en: "You're WISP Pro now. Videos, files and your own Hive are unlocked.",
+    de: "Du bist jetzt WISP Pro. Videos, Dateien und dein eigener Hive sind freigeschaltet.",
+  },
+  "Only WISP Pro can change its name.": {
+    en: "Only WISP Pro can change its name.",
+    de: "Nur WISP Pro kann seinen Namen ändern.",
+  },
+  "Enter your WISP id, then your password (free WISP) or your 24 words (WISP Pro).": {
+    en: "Enter your WISP id, then your password (free WISP) or your 24 words (WISP Pro).",
+    de: "Gib deine WISP-ID ein, dann dein Passwort (freie WISP) oder deine 24 Wörter (WISP Pro).",
+  },
+  "WISP id": {
+    en: "WISP id", de: "WISP-ID",
+  },
+  Password: {
+    en: "Password", de: "Passwort",
+  },
+  "24 words": {
+    en: "24 words", de: "24 Wörter",
+  },
+  "your login password": {
+    en: "your login password", de: "dein Login-Passwort",
+  },
+  "Enter a WISP id like WISP-204913.": {
+    en: "Enter a WISP id like WISP-204913.",
+    de: "Gib eine WISP-ID wie WISP-204913 ein.",
+  },
 };
 
 export function t(lang, key) {

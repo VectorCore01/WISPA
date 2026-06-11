@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { THEMES, honeycombBg } from "../lib/theme.js";
-import { genSeed, genWispId, nowTime, DEMO_LIFETIME_MS, seedCells } from "../lib/helpers.js";
+import { genSeed, genWispId, genHiveId, genMsgKey, nowTime, DEMO_LIFETIME_MS, seedCells, seedHiveMembers, lookupPeer } from "../lib/helpers.js";
 import { t } from "../lib/translations.js";
 import Landing from "./Landing.jsx";
 import EntryChoice from "./EntryChoice.jsx";
+import Profile from "./Profile.jsx";
 import Onboard from "./Onboard.jsx";
 import Login from "./Login.jsx";
 import AppShell from "./AppShell.jsx";
@@ -12,12 +13,16 @@ export default function WispaPrototype() {
   const [mode] = useState("dark");
   const C = THEMES[mode];
 
-  const [lang, setLang] = useState("de");
+  const [lang, setLang] = useState("en");
   const [screen, setScreen] = useState("landing");
+  const [tier, setTier] = useState("wisp"); // "wisp" (free, cells fade) | "pro" (paid, permanent)
   const [seed, setSeed] = useState([]);
   const [seedConfirmed, setSeedConfirmed] = useState(false);
   const [wispId, setWispId] = useState("");
-  const [hasHive, setHasHive] = useState(false);
+  const [hiveId, setHiveId] = useState("");
+  const [msgKey, setMsgKey] = useState("");      // 6-digit code others type to reach you
+  const [username, setUsername] = useState("");
+  const [loginPass, setLoginPass] = useState(""); // free WISP logs in with id + this password
   const [tab, setTab] = useState("cells");
   const [toast, setToast] = useState(null);
 
@@ -25,13 +30,17 @@ export default function WispaPrototype() {
   const [activeCell, setActiveCell] = useState(null);
   const [now, setNow] = useState(Date.now());
 
+  const [hiveCfg, setHiveCfg] = useState(null); // { name, pass } once the channel is created
+  const [hiveMembers, setHiveMembers] = useState([]);
   const [hivePosts, setHivePosts] = useState([]);
+
+  const isPro = tier === "pro";
 
   useEffect(() => {
     const iv = setInterval(() => {
       const t = Date.now();
       setNow(t);
-      if (!hasHive) {
+      if (!isPro) {
         setCells((cs) => {
           const survivors = cs.filter((c) => t - c.lastActivity < DEMO_LIFETIME_MS);
           if (survivors.length !== cs.length) {
@@ -42,41 +51,96 @@ export default function WispaPrototype() {
       }
     }, 1000);
     return () => clearInterval(iv);
-  }, [hasHive]);
+  }, [isPro]);
 
   function notify(msg) { setToast(msg); setTimeout(() => setToast(null), 2600); }
 
-  function startOnboard() { setSeed(genSeed()); setSeedConfirmed(false); setScreen("onboard"); }
+  function startProfile() { setUsername(""); setLoginPass(""); setScreen("profile"); }
   function startLogin() { setScreen("login"); }
-  function finishOnboard() {
+
+  // Free signup → a WISP. Logs back in with id + the password chosen here.
+  // No 24 words. Cells fade. Can send messages + images only.
+  function finishFreeWisp() {
+    setTier("wisp");
     setWispId(genWispId());
+    setMsgKey(genMsgKey());
+    setHiveId("");
+    setSeed([]);
     setCells(seedCells());
-    setHasHive(false);
+    setHiveCfg(null);
+    setHiveMembers([]);
+    setHivePosts([]);
     setScreen("app");
-    setTab("cells");
-    notify(t(lang, "Welcome. Your anonymous WISP is ready."));
+    setTab("account");
+    notify(t(lang, "Your free WISP is ready."));
   }
-  function finishLogin() {
-    setWispId(genWispId());
+
+  // Upgrade flow: pay €4.99 → generate 24 words → become WISP Pro.
+  // Keeps the same WISP id and message key.
+  function startUpgrade() { setSeed(genSeed()); setSeedConfirmed(false); setScreen("onboard"); }
+  function finishUpgrade() {
+    setTier("pro");
+    setHiveId(genHiveId());
+    setHiveMembers(seedHiveMembers());
+    setScreen("app");
+    setTab("account");
+    notify(t(lang, "You're WISP Pro now. Videos, files and your own Hive are unlocked."));
+  }
+
+  // Restore: Pro logs in with id + 24 words, free WISP with id + password.
+  function finishLogin(id, restoredTier) {
+    setTier(restoredTier);
+    setWispId(id);
+    setMsgKey(genMsgKey());
+    setUsername("nomad");
+    setLoginPass("amber");
     setCells(seedCells());
-    setHasHive(false);
+    setHiveCfg(null);
+    if (restoredTier === "pro") {
+      setHiveId(genHiveId());
+      setHiveMembers(seedHiveMembers());
+    } else {
+      setHiveId("");
+      setHiveMembers([]);
+    }
+    setHivePosts([]);
     setScreen("app");
     setTab("cells");
     notify(t(lang, "WISP restored. Welcome back."));
   }
 
-  function buyHive() {
-    if (hasHive) return notify("You already run a hive channel.");
-    setHasHive(true);
-    setTab("hive");
-    notify(`Hive active — your cells now survive. €4.99/month.`);
+  function changeName(name) {
+    if (!isPro) return notify(t(lang, "Only WISP Pro can change its name."));
+    const v = name.trim();
+    if (v.length < 3) return notify(t(lang, "Pick a username with at least 3 characters."));
+    setUsername(v);
+    notify(t(lang, "Name updated."));
   }
 
-  function sendInCell(cellId, text, kind = "text") {
+  function createHive(name, pass) {
+    setHiveCfg({ name: name.trim(), pass: pass.trim() });
+    notify(t(lang, "Hive channel created."));
+  }
+  function approveMember(id) {
+    setHiveMembers((m) => m.map((x) => (x.id === id ? { ...x, status: "approved" } : x)));
+  }
+  function rejectMember(id) {
+    setHiveMembers((m) => m.filter((x) => x.id !== id));
+  }
+
+  // msg is either { text } or an attachment { kind, name, size, url }.
+  // Attachments start sealed (opened: false) and must be opened to be seen.
+  function sendInCell(cellId, msg) {
     setCells((cs) => cs.map((c) =>
       c.id === cellId
-        ? { ...c, lastActivity: Date.now(), seen: true, current: { from: "me", text, kind, time: nowTime() } }
+        ? { ...c, lastActivity: Date.now(), seen: true, current: { from: "me", kind: "text", time: nowTime(), opened: false, ...msg } }
         : c
+    ));
+  }
+
+  function openCellAttachment(cellId) {
+    setCells((cs) => cs.map((c) =>
+      c.id === cellId && c.current ? { ...c, current: { ...c.current, opened: true } } : c
     ));
   }
 
@@ -85,21 +149,59 @@ export default function WispaPrototype() {
     setActiveCell(cellId);
   }
 
-  function startNewCell(peer) {
+  function startNewCell(peer, key) {
+    // You can only open a cell if you know their WISP id AND their 6-digit
+    // message key. Otherwise the cell is refused.
+    const res = lookupPeer(peer, key);
+    if (!res.ok) {
+      notify(res.reason === "unknown"
+        ? t(lang, "No WISP found with that id.")
+        : t(lang, "Wrong message key — you can't open a cell with them."));
+      return false;
+    }
+    const existing = cells.find((c) => c.peer === peer);
+    if (existing) {
+      openCell(existing.id);
+      setTab("cells");
+      return true;
+    }
     const id = Date.now();
-    setCells((cs) => [{ id, peer, lastActivity: Date.now(), current: null, seen: true }, ...cs]);
+    // authed: true — you typed their key to open this cell.
+    setCells((cs) => [{ id, peer, peerName: res.name, authed: true, lastActivity: Date.now(), current: null, seen: true }, ...cs]);
     setActiveCell(id);
     setTab("cells");
+    return true;
   }
 
-  function postToHive(text) {
-    setHivePosts((p) => [...p, { id: Date.now(), text, time: nowTime(), reads: Math.floor(Math.random() * 40) }]);
+  // To reply in an incoming cell you must enter the peer's 6-digit key first —
+  // the same way they had to enter yours to reach you.
+  function unlockCell(cellId, key) {
+    const cell = cells.find((c) => c.id === cellId);
+    if (!cell) return false;
+    const res = lookupPeer(cell.peer, key);
+    if (!res.ok) {
+      notify(t(lang, "Wrong message key — you can't reply yet."));
+      return false;
+    }
+    setCells((cs) => cs.map((c) => (c.id === cellId ? { ...c, authed: true } : c)));
+    return true;
+  }
+
+  // A post is either text ({ text }) or an attachment ({ kind, name, url, size }).
+  function postToHive(payload) {
+    setHivePosts((p) => [...p, { id: Date.now(), time: nowTime(), ...payload }]);
   }
 
   const shared = {
-    C, mode, lang, setLang, wispId, hasHive, tab, setTab, notify, setScreen,
-    cells, activeCell, setActiveCell, openCell, sendInCell, startNewCell,
-    buyHive, hivePosts, postToHive, now, lifetime: DEMO_LIFETIME_MS,
+    C, mode, lang, setLang,
+    tier, isPro, wispId, hiveId, myId: wispId, username, msgKey, loginPass,
+    hasHive: isPro, // Pro accounts keep their cells alive and can send video/files
+    tab, setTab, notify, setScreen,
+    cells, activeCell, setActiveCell, openCell, sendInCell, openCellAttachment, startNewCell, unlockCell,
+    startUpgrade, changeName,
+    hiveCfg, createHive, hiveMembers, approveMember, rejectMember,
+    hivePosts, postToHive,
+    now, lifetime: DEMO_LIFETIME_MS,
   };
 
   return (
@@ -132,8 +234,9 @@ export default function WispaPrototype() {
       )}
 
       {screen === "landing" && <Landing C={C} lang={lang} onStart={() => setScreen("choice")} />}
-      {screen === "choice" && <EntryChoice C={C} lang={lang} setLang={setLang} onCreate={startOnboard} onLogin={startLogin} onBack={() => setScreen("landing")} />}
-      {screen === "onboard" && <Onboard C={C} lang={lang} seed={seed} confirmed={seedConfirmed} setConfirmed={setSeedConfirmed} onFinish={finishOnboard} onBack={() => setScreen("choice")} />}
+      {screen === "choice" && <EntryChoice C={C} lang={lang} setLang={setLang} onCreate={startProfile} onLogin={startLogin} onBack={() => setScreen("landing")} />}
+      {screen === "profile" && <Profile C={C} lang={lang} username={username} setUsername={setUsername} loginPass={loginPass} setLoginPass={setLoginPass} onContinue={finishFreeWisp} onBack={() => setScreen("choice")} />}
+      {screen === "onboard" && <Onboard C={C} lang={lang} seed={seed} confirmed={seedConfirmed} setConfirmed={setSeedConfirmed} onFinish={finishUpgrade} onBack={() => setScreen("app")} />}
       {screen === "login" && <Login C={C} lang={lang} onFinish={finishLogin} onBack={() => setScreen("choice")} />}
       {screen === "app" && <AppShell {...shared} />}
     </div>
