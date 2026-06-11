@@ -1,8 +1,16 @@
+import { useState } from "react";
 import WaspLock from "./WaspLock.jsx";
 import { FACE_MONO } from "../lib/theme.js";
 import { t } from "../lib/translations.js";
 
 export default function WispLanding({ C, lang, onStart, onLight }) {
+  const [clicked, setClicked] = useState(false);
+
+  const handleClick = () => {
+    setClicked(true);
+    setTimeout(() => onStart(), 300);
+  };
+
   return (
     <div style={{
       minHeight: "100vh",
@@ -13,9 +21,18 @@ export default function WispLanding({ C, lang, onStart, onLight }) {
       padding: "0 24px",
       fontFamily: FACE_MONO,
       textAlign: "center",
+      cursor: "pointer",
     }}>
-      <div style={{ animation: "drift 7s ease-in-out infinite" }}>
-        <WaspLock size={108} C={C} />
+      <div
+        onClick={handleClick}
+        style={{
+          animation: clicked ? "logoPop 0.3s ease forwards" : "drift 7s ease-in-out infinite",
+          opacity: clicked ? 0 : 1,
+          transform: clicked ? "scale(1.4)" : "none",
+          transition: "opacity 0.3s, transform 0.3s",
+        }}
+      >
+        <WaspLock size={160} C={C} />
       </div>
 
       <div style={{
@@ -28,27 +45,9 @@ export default function WispLanding({ C, lang, onStart, onLight }) {
       </div>
 
       <button
-        onClick={onStart}
-        style={{
-          marginTop: 40,
-          background: "transparent",
-          color: C.accent,
-          border: `1px solid ${C.accent}`,
-          padding: "13px 40px",
-          borderRadius: 4,
-          fontSize: 13,
-          fontWeight: 700,
-          letterSpacing: "0.3em",
-          paddingLeft: "calc(40px + 0.3em)",
-        }}
-      >
-        {t(lang, "ENTER")}
-      </button>
-
-      <button
         onClick={onLight}
         style={{
-          marginTop: 16,
+          marginTop: 32,
           background: "transparent",
           border: "none",
           color: C.textDim,
@@ -80,6 +79,13 @@ export default function WispLanding({ C, lang, onStart, onLight }) {
           <span style={{ color: C.accent, animation: "blink 1.1s step-end infinite" }}>_</span>
         </div>
       </div>
+
+      <style>{`
+        @keyframes logoPop {
+          0% { opacity: 1; transform: scale(1); }
+          100% { opacity: 0; transform: scale(1.6); }
+        }
+      `}</style>
     </div>
   );
 }

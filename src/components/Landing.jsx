@@ -156,6 +156,36 @@ function needsMul(expr) {
   return expr.length > 0 && /[0-9.)πe!]/.test(expr[expr.length - 1]);
 }
 
+function fmtDisplay(s) {
+  if (!s.includes("^")) return s;
+  const out = [];
+  let i = 0;
+  while (i < s.length) {
+    const idx = s.indexOf("^", i);
+    if (idx === -1) { out.push(s.slice(i)); break; }
+    if (idx > i) out.push(s.slice(i, idx));
+    const rest = s.slice(idx + 1);
+    const md = rest.match(/^(\d+)/);
+    if (md) {
+      out.push(<sup key={idx}>{md[1]}</sup>);
+      i = idx + 1 + md[1].length;
+    } else if (rest[0] === "(") {
+      let d = 0, j = 0;
+      for (; j < rest.length; j++) {
+        if (rest[j] === "(") d++;
+        if (rest[j] === ")") d--;
+        if (d === 0) { j++; break; }
+      }
+      out.push(<sup key={idx}>{rest.slice(0, j)}</sup>);
+      i = idx + 1 + j;
+    } else {
+      out.push("^");
+      i = idx + 1;
+    }
+  }
+  return out.length ? out : s;
+}
+
 // --- grid rows ---
 
 const ROW1_NORM = [
@@ -414,7 +444,7 @@ export default function Landing({ C, lang, onStart }) {
           color: "#1A1A1A", fontFamily: FACE_MONO, minHeight: 40,
           letterSpacing: "0.02em", overflow: "hidden", wordBreak: "break-all", lineHeight: 1.3,
         }}>
-          {display}
+          {fmtDisplay(display)}
         </div>
 
         {row(mode2 ? ROW1_2ND : ROW1_NORM)}
