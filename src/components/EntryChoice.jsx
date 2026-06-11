@@ -1,5 +1,4 @@
 import { useState } from "react";
-import WaspLock from "./WaspLock.jsx";
 import { FACE_MONO } from "../lib/theme.js";
 import { LANG_NAMES, LANG_LIST, t } from "../lib/translations.js";
 
@@ -36,8 +35,11 @@ export default function EntryChoice({ C, lang, setLang, onCreate, onLogin, onBac
         )}
       </div>
 
-      <WaspLock size={72} C={C} />
-      <div style={{ fontSize: 13, color: C.textDim, marginTop: 20, marginBottom: 36 }}>{t(lang, "say it once. then it's gone.")}</div>
+      <div style={{
+        fontSize: 48, fontWeight: 700, letterSpacing: "0.16em",
+        color: C.accent, fontFamily: FACE_MONO, marginBottom: 8,
+      }}>WISPA</div>
+      <div style={{ fontSize: 13, color: C.textDim, marginBottom: 36 }}>{t(lang, "say it once. then it's gone.")}</div>
 
       <button onClick={onCreate} style={{
         width: 280, background: "transparent", color: C.accent,

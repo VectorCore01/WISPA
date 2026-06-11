@@ -1,7 +1,8 @@
 import { useState, useRef } from "react";
 import { THEMES, FACE_UI, honeycombBg } from "../lib/theme.js";
-import { genSeed, genWispId, genHiveId, genMsgKey, genHiveKey, nowTime, seedCells, seedHiveMembers, lookupPeer, capPerSender, CELL_MSG_PER_SENDER } from "../lib/helpers.js";
+import { genSeed, rand6, capPerSender, CELL_MSG_PER_SENDER, nowTime, seedCells, seedHiveMembers } from "../lib/helpers.js";
 import { t } from "../lib/translations.js";
+import { api, normCell } from "../lib/api.js";
 import Landing from "./Landing.jsx";
 import WispLanding from "./WispLanding.jsx";
 import EntryChoice from "./EntryChoice.jsx";
@@ -26,16 +27,12 @@ export default function WispaPrototype() {
   const [loginPass, setLoginPass] = useState("");
   const [tab, setTab] = useState("cells");
   const [toast, setToast] = useState(null);
-
-  const [cells, setCells] = useState(seedCells());
+  const [cells, setCells] = useState([]);
   const [activeCell, setActiveCell] = useState(null);
-
   const msgIdRef = useRef(Date.now());
-
   const [hiveCfg, setHiveCfg] = useState(null);
   const [hiveMembers, setHiveMembers] = useState([]);
   const [hivePosts, setHivePosts] = useState([]);
-
   const isPro = tier === "pro";
 
   function notify(msg) { setToast(msg); setTimeout(() => setToast(null), 2600); }
@@ -43,141 +40,188 @@ export default function WispaPrototype() {
   function startProfile() { setUsername(""); setLoginPass(""); setScreen("profile"); }
   function startLogin() { setScreen("login"); }
 
-  function finishFreeWisp() {
-    setTier("wisp");
-    setWispId(genWispId());
-    setMsgKey(genMsgKey());
-    setHiveId("");
-    setSeed([]);
-    setCells(seedCells());
-    setHiveCfg(null);
-    setHiveMembers([]);
-    setHivePosts([]);
-    setScreen("app");
-    setTab("account");
-    notify(t(lang, "Your free WISP is ready."));
+  async function finishFreeWisp() {
+    try {
+      const res = await api.register(username || "anon", loginPass || "demo");
+      setTier("wisp");
+      setWispId(res.wispId);
+      setMsgKey(res.msgKey);
+      setUsername(res.username);
+      setHiveId("");
+      setCells([]);
+      setHiveCfg(null);
+      setHiveMembers([]);
+      setHivePosts([]);
+      setScreen("app");
+      setTab("account");
+      notify("Your free WISP is ready.");
+    } catch (e) {
+      notify(e.message);
+    }
   }
 
   function startUpgrade() { setSeed(genSeed()); setSeedConfirmed(false); setScreen("onboard"); }
   function finishUpgrade() {
     setTier("pro");
-    setHiveId(genHiveId());
-    setHiveMembers(seedHiveMembers());
+    setHiveId("");
+    setSeed([]);
     setScreen("app");
     setTab("account");
-    notify(t(lang, "You're WISP Pro now. Videos, files and your own Hive are unlocked."));
+    notify("You're WISP Pro now. Videos, files and your own Hive are unlocked.");
   }
 
-  function finishLogin(id, restoredTier) {
-    setTier(restoredTier);
-    setWispId(id);
-    setMsgKey(genMsgKey());
-    setUsername("nomad");
-    setLoginPass("amber");
-    setCells(seedCells());
-    setHiveCfg(null);
-    if (restoredTier === "pro") {
-      setHiveId(genHiveId());
-      setHiveMembers(seedHiveMembers());
-    } else {
-      setHiveId("");
+  async function finishLogin(id, restoredTier) {
+    try {
+      if (restoredTier === "pro") {
+        const fakeWords = genSeed().join(" ");
+        await api.restorePro(id, fakeWords);
+      } else {
+        await api.login(id, loginPass || "demo");
+      }
+      const me = await api.me();
+      setTier(me.tier || "wisp");
+      setWispId(me.wisp_id);
+      setUsername(me.username || "");
+      setHiveId(me.hive_id || "");
+      setMsgKey("");
+      const cs = (await api.getCells().catch(() => [])).map(normCell);
+      setCells(cs);
+      setHiveCfg(null);
+      setHivePosts([]);
       setHiveMembers([]);
+      setScreen("app");
+      setTab("cells");
+      notify("WISP restored. Welcome back.");
+    } catch (e) {
+      notify(e.message);
     }
-    setHivePosts([]);
-    setScreen("app");
-    setTab("cells");
-    notify(t(lang, "WISP restored. Welcome back."));
   }
 
   function changeName(name) {
-    if (!isPro) return notify(t(lang, "Only WISP Pro can change its name."));
+    if (!isPro) return notify("Only WISP Pro can change its name.");
     const v = name.trim();
-    if (v.length < 3) return notify(t(lang, "Pick a username with at least 3 characters."));
+    if (v.length < 3) return notify("Pick a username with at least 3 characters.");
     setUsername(v);
-    notify(t(lang, "Name updated."));
+    notify("Name updated.");
   }
 
-  function createHive(name) {
-    const key = genHiveKey();
-    setHiveCfg({ name: name.trim(), key });
-    notify(t(lang, "Hive channel created."));
-  }
-  function approveMember(id) {
-    setHiveMembers((m) => m.map((x) => (x.id === id ? { ...x, status: "approved" } : x)));
-  }
-  function rejectMember(id) {
-    setHiveMembers((m) => m.filter((x) => x.id !== id));
+  async function createHive(name) {
+    try {
+      const res = await api.createHive();
+      setHiveId(res.hiveId);
+      setHiveCfg({ name: name || "My Hive", key: res.hiveId });
+      notify("Hive channel created.");
+    } catch (e) { notify(e.message); }
   }
 
-  function destroyHive() {
-    setHiveCfg(null);
-    setHiveMembers([]);
-    setHivePosts([]);
-    notify("Hive destroyed. You can create a new one anytime.");
+  async function approveMember(id) {
+    try { await api.approveMember(id); setHiveMembers((m) => m.map((x) => (x.wisp_id === id ? { ...x, status: "approved" } : x))); } catch (e) { notify(e.message); }
+  }
+
+  async function rejectMember(id) {
+    try { await api.rejectMember(id); setHiveMembers((m) => m.filter((x) => x.wisp_id !== id)); } catch (e) { notify(e.message); }
+  }
+
+  async function destroyHive() {
+    try {
+      await api.destroyHive();
+      setHiveCfg(null);
+      setHiveMembers([]);
+      setHivePosts([]);
+      setHiveId("");
+      notify("Hive destroyed. You can create a new one anytime.");
+    } catch (e) { notify(e.message); }
   }
 
   function sendInCell(cellId, msg) {
     const entry = { id: ++msgIdRef.current, from: "me", kind: "text", time: nowTime(), opened: false, ...msg };
+    // Optimistic local update — the server also stores messages
+    api.sendMessage(cellId, entry.kind, entry.text || entry.content || "").catch(() => {});
     setCells((cs) => cs.map((c) => {
       if (c.id !== cellId) return c;
-      return { ...c, lastActivity: Date.now(), seen: true, messages: capPerSender([...c.messages, entry], CELL_MSG_PER_SENDER) };
+      return { ...c, lastActivity: Date.now(), seen: true, messages: capPerSender([...(c.messages || []), entry], CELL_MSG_PER_SENDER) };
     }));
   }
 
   function openCellAttachment(cellId, msgId) {
     setCells((cs) => cs.map((c) =>
-      c.id === cellId
-        ? { ...c, messages: c.messages.map((m) => m.id === msgId ? { ...m, opened: true } : m) }
-        : c
+      c.id === cellId ? { ...c, messages: (c.messages || []).map((m) => m.id === msgId ? { ...m, opened: true } : m) } : c
     ));
   }
 
-  function openCell(cellId) {
+  async function openCell(cellId) {
     setCells((cs) => cs.map((c) => c.id === cellId ? { ...c, seen: true } : c));
     setActiveCell(cellId);
+    api.markOpened(cellId).catch(() => {});
   }
 
-  function startNewCell(peer, key) {
-    const res = lookupPeer(peer, key);
-    if (!res.ok) {
-      notify(res.reason === "unknown"
-        ? t(lang, "No WISP found with that id.")
-        : t(lang, "Wrong message key — you can't open a cell with them."));
-      return false;
-    }
-    const existing = cells.find((c) => c.peer === peer);
-    if (existing) {
-      openCell(existing.id);
+  async function startNewCell(peer, key) {
+    try {
+      const res = await api.openCell(peer, key);
+      const existing = cells.find((c) => c.peer_id === peer || c.peer === peer);
+      if (existing || res.exists) {
+        if (res.cell) {
+          setActiveCell(res.cell.id);
+          setTab("cells");
+          return true;
+        }
+        setActiveCell(existing.id);
+        setTab("cells");
+        return true;
+      }
+      const cell = { ...normCell(res.cell), lastActivity: Date.now(), messages: [], seen: true };
+      setCells((cs) => [cell, ...cs]);
+      setActiveCell(cell.id);
       setTab("cells");
       return true;
-    }
-    const id = Date.now();
-    setCells((cs) => [{ id, peer, peerName: res.name, authed: true, lastActivity: Date.now(), messages: [], seen: true }, ...cs]);
-    setActiveCell(id);
-    setTab("cells");
-    return true;
-  }
-
-  function unlockCell(cellId, key) {
-    const cell = cells.find((c) => c.id === cellId);
-    if (!cell) return false;
-    const res = lookupPeer(cell.peer, key);
-    if (!res.ok) {
-      notify(t(lang, "Wrong message key — you can't reply yet."));
+    } catch (e) {
+      notify(e.message);
       return false;
     }
-    setCells((cs) => cs.map((c) => (c.id === cellId ? { ...c, authed: true } : c)));
-    return true;
   }
 
-  function postToHive(payload) {
-    setHivePosts((p) => [...p, { id: Date.now(), time: nowTime(), ...payload }]);
+  async function unlockCell(cellId, key) {
+    try {
+      await api.unlockCell(cellId, key);
+      setCells((cs) => cs.map((c) => (c.id === cellId ? { ...c, authed: 1 } : c)));
+      return true;
+    } catch (e) {
+      notify(e.message);
+      return false;
+    }
+  }
+
+  async function postToHive(payload) {
+    try {
+      const p = await api.postToHive(payload.content || payload.text || "");
+      setHivePosts((posts) => [...posts, { id: p.id || Date.now(), time: p.time || nowTime(), ...payload }]);
+    } catch (e) { notify(e.message); }
+  }
+
+  async function loadHive() {
+    try {
+      const h = await api.getHive();
+      if (h.hiveId) {
+        setHiveId(h.hiveId);
+        setHiveMembers(h.members || []);
+        setHivePosts(h.posts || []);
+        setHiveCfg({ id: h.hiveId, name: h.hiveId });
+      }
+    } catch {}
+  }
+
+  // Seed data for demo when no server
+  function useSeedFallback() {
+    if (!cells.length && !wispId) {
+      setCells(seedCells());
+      setHiveMembers(seedHiveMembers());
+    }
   }
 
   const shared = {
     C, mode, lang, setLang,
     tier, isPro, wispId, hiveId, myId: wispId, username, msgKey, loginPass,
-    hasHive: isPro,
+    hasHive: isPro && !!hiveId,
     tab, setTab, notify, setScreen,
     cells, activeCell, setActiveCell, openCell, sendInCell, openCellAttachment, startNewCell, unlockCell,
     startUpgrade, changeName,

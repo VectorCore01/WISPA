@@ -9,7 +9,7 @@ export function genSeed() {
   return Array.from({ length: 24 }, pick);
 }
 
-function rand6() {
+export function rand6() {
   return String(Math.floor(Math.random() * 900000) + 100000);
 }
 
