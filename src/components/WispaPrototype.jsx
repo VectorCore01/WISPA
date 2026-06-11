@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { THEMES, FACE_UI, honeycombBg } from "../lib/theme.js";
-import { genSeed, rand6, capPerSender, CELL_MSG_PER_SENDER, nowTime, seedCells, seedHiveMembers } from "../lib/helpers.js";
+import { genSeed, genWispId, genMsgKey, rand6, capPerSender, CELL_MSG_PER_SENDER, nowTime, seedCells, seedHiveMembers, lookupPeer } from "../lib/helpers.js";
 import { t } from "../lib/translations.js";
 import { api, normCell } from "../lib/api.js";
 import Landing from "./Landing.jsx";
@@ -41,8 +41,8 @@ export default function WispaPrototype() {
   function startLogin() { setScreen("login"); }
 
   async function finishFreeWisp() {
-    try {
-      const res = await api.register(username || "anon", loginPass || "demo");
+    const res = await api.register(username || "anon", loginPass || "demo").catch(() => null);
+    if (res) {
       setTier("wisp");
       setWispId(res.wispId);
       setMsgKey(res.msgKey);
@@ -55,8 +55,20 @@ export default function WispaPrototype() {
       setScreen("app");
       setTab("account");
       notify("Your free WISP is ready.");
-    } catch (e) {
-      notify(e.message);
+    } else {
+      const fake = genWispId();
+      setTier("wisp");
+      setWispId(fake);
+      setMsgKey(genMsgKey());
+      setUsername(username || "anon");
+      setHiveId("");
+      setCells([]);
+      setHiveCfg(null);
+      setHiveMembers([]);
+      setHivePosts([]);
+      setScreen("app");
+      setTab("account");
+      notify("Offline mode — your WISP is local only.");
     }
   }
 
@@ -71,30 +83,44 @@ export default function WispaPrototype() {
   }
 
   async function finishLogin(id, restoredTier) {
-    try {
-      if (restoredTier === "pro") {
-        const fakeWords = genSeed().join(" ");
-        await api.restorePro(id, fakeWords);
-      } else {
-        await api.login(id, loginPass || "demo");
-      }
-      const me = await api.me();
-      setTier(me.tier || "wisp");
-      setWispId(me.wisp_id);
-      setUsername(me.username || "");
-      setHiveId(me.hive_id || "");
-      setMsgKey("");
-      const cs = (await api.getCells().catch(() => [])).map(normCell);
-      setCells(cs);
-      setHiveCfg(null);
-      setHivePosts([]);
-      setHiveMembers([]);
-      setScreen("app");
-      setTab("cells");
-      notify("WISP restored. Welcome back.");
-    } catch (e) {
-      notify(e.message);
+    let ok = false;
+    if (restoredTier === "pro") {
+      const fakeWords = genSeed().join(" ");
+      ok = await api.restorePro(id, fakeWords).then(() => true).catch(() => false);
+    } else {
+      ok = await api.login(id, loginPass || "demo").then(() => true).catch(() => false);
     }
+    if (ok) {
+      const me = await api.me().catch(() => null);
+      if (me) {
+        setTier(me.tier || "wisp");
+        setWispId(me.wisp_id);
+        setUsername(me.username || "");
+        setHiveId(me.hive_id || "");
+        setMsgKey("");
+        const cs = (await api.getCells().catch(() => [])).map(normCell);
+        setCells(cs);
+        setHiveCfg(null);
+        setHivePosts([]);
+        setHiveMembers([]);
+        setScreen("app");
+        setTab("cells");
+        notify("WISP restored. Welcome back.");
+        return;
+      }
+    }
+    setTier("wisp");
+    setWispId(id);
+    setMsgKey("");
+    setUsername(id.replace("WISP-", "user_"));
+    setHiveId("");
+    setCells([]);
+    setHiveCfg(null);
+    setHivePosts([]);
+    setHiveMembers([]);
+    setScreen("app");
+    setTab("cells");
+    notify("Offline mode — restored locally.");
   }
 
   function changeName(name) {
