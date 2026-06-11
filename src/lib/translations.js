@@ -190,8 +190,8 @@ const T = {
     en: "Choose a name to chat under and a password. Others can only open a cell with you if they know your id and this password.",
     de: "Wähle einen Namen, unter dem du chattest, und ein Kennwort. Andere können nur dann eine Zelle mit dir öffnen, wenn sie deine ID und dieses Kennwort kennen.",
   },
-  "Start free": {
-    en: "Start free", de: "Gratis starten",
+  "Create a Wisp": {
+    en: "Create a Wisp", de: "Wisp erstellen",
   },
   "Start free as a BEE. Log in with your 24 words if you're already a WISP.": {
     en: "Start free as a BEE. Log in with your 24 words if you're already a WISP.",
@@ -278,9 +278,9 @@ const T = {
     en: "Keep this password safe — a free WISP has no 24-word key to fall back on.",
     de: "Bewahre dieses Passwort gut auf — eine freie WISP hat keinen 24-Wörter-Key als Rückfallebene.",
   },
-  "Start free as a WISP. Log in if you already have an account.": {
-    en: "Start free as a WISP. Log in if you already have an account.",
-    de: "Starte gratis als WISP. Melde dich an, wenn du bereits ein Konto hast.",
+  "Create a Wisp. Log in if you already have one.": {
+    en: "Create a Wisp. Log in if you already have one.",
+    de: "Wisp erstellen. Melde dich an, wenn du bereits einen hast.",
   },
   "Your free WISP is ready.": {
     en: "Your free WISP is ready.", de: "Deine gratis WISP ist bereit.",

@@ -45,7 +45,7 @@ export default function EntryChoice({ C, lang, setLang, onCreate, onLogin, onBac
         padding: "15px 0", fontSize: 13, fontWeight: 700,
         letterSpacing: "0.3em", marginBottom: 14,
       }}>
-        {t(lang, "Start free")}
+        {t(lang, "Create a Wisp")}
       </button>
 
       <button onClick={onLogin} style={{
@@ -57,7 +57,7 @@ export default function EntryChoice({ C, lang, setLang, onCreate, onLogin, onBac
       </button>
 
       <div style={{ fontSize: 11, color: C.textDim, marginTop: 18, maxWidth: 280, lineHeight: 1.6 }}>
-        {t(lang, "Start free as a WISP. Log in if you already have an account.")}
+        {t(lang, "Create a Wisp. Log in if you already have one.")}
       </div>
     </div>
   );
