@@ -3,6 +3,7 @@ import { THEMES, FACE_UI, honeycombBg } from "../lib/theme.js";
 import { genSeed, genWispId, genHiveId, genMsgKey, genHiveKey, nowTime, seedCells, seedHiveMembers, lookupPeer, capPerSender, CELL_MSG_PER_SENDER } from "../lib/helpers.js";
 import { t } from "../lib/translations.js";
 import Landing from "./Landing.jsx";
+import WispLanding from "./WispLanding.jsx";
 import EntryChoice from "./EntryChoice.jsx";
 import Profile from "./Profile.jsx";
 import Onboard from "./Onboard.jsx";
@@ -213,8 +214,9 @@ export default function WispaPrototype() {
         </div>
       )}
 
-      {screen === "landing" && <Landing C={C} lang={lang} onStart={() => setScreen("choice")} />}
-      {screen === "choice" && <EntryChoice C={C} lang={lang} setLang={setLang} onCreate={startProfile} onLogin={startLogin} onBack={() => setScreen("landing")} />}
+      {screen === "landing" && <Landing C={C} lang={lang} onStart={() => setScreen("wisp-landing")} />}
+      {screen === "wisp-landing" && <WispLanding C={C} lang={lang} onStart={() => setScreen("choice")} onLight={() => setScreen("landing")} />}
+      {screen === "choice" && <EntryChoice C={C} lang={lang} setLang={setLang} onCreate={startProfile} onLogin={startLogin} onBack={() => setScreen("wisp-landing")} />}
       {screen === "profile" && <Profile C={C} lang={lang} username={username} setUsername={setUsername} loginPass={loginPass} setLoginPass={setLoginPass} onContinue={finishFreeWisp} onBack={() => setScreen("choice")} />}
       {screen === "onboard" && <Onboard C={C} lang={lang} seed={seed} confirmed={seedConfirmed} setConfirmed={setSeedConfirmed} onFinish={finishUpgrade} onBack={() => setScreen("app")} />}
       {screen === "login" && <Login C={C} lang={lang} onFinish={finishLogin} onBack={() => setScreen("choice")} />}
