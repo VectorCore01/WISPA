@@ -50,6 +50,13 @@ export default function WispaPrototype() {
   const [hivePosts, setHivePosts] = useState([]);
   const isPro = tier === "pro";
   const mounted = useRef(false);
+  const [visor, setVisor] = useState(false);
+  const prevRef = useRef(null);
+
+  function showVisor() {
+    prevRef.current = screen;
+    setVisor(true);
+  }
 
   useEffect(() => {
     if (!mounted.current) { mounted.current = true; return; }
@@ -269,7 +276,7 @@ export default function WispaPrototype() {
     C, mode, lang, setLang,
     tier, isPro, wispId, hiveId, myId: wispId, username, msgKey, loginPass,
     hasHive: isPro && !!hiveId,
-    tab, setTab, notify, setScreen,
+    tab, setTab, showVisor, notify, setScreen,
     cells, activeCell, setActiveCell, openCell, sendInCell, openCellAttachment, startNewCell, unlockCell,
     startUpgrade, changeName,
     hiveCfg, createHive, hiveMembers, approveMember, rejectMember, destroyHive,
@@ -305,13 +312,23 @@ export default function WispaPrototype() {
         </div>
       )}
 
-      {screen === "landing" && <Landing C={C} lang={lang} onStart={() => setScreen("wisp-landing")} />}
-      {screen === "wisp-landing" && <WispLanding C={C} onStart={() => setScreen("choice")} onLight={() => setScreen("landing")} />}
-      {screen === "choice" && <EntryChoice C={C} lang={lang} setLang={setLang} onCreate={startProfile} onLogin={startLogin} onBack={() => setScreen("wisp-landing")} />}
-      {screen === "profile" && <Profile C={C} lang={lang} username={username} setUsername={setUsername} loginPass={loginPass} setLoginPass={setLoginPass} onContinue={finishFreeWisp} onBack={() => setScreen("choice")} />}
-      {screen === "onboard" && <Onboard C={C} lang={lang} seed={seed} confirmed={seedConfirmed} setConfirmed={setSeedConfirmed} onFinish={finishUpgrade} onBack={() => setScreen("app")} />}
-      {screen === "login" && <Login C={C} lang={lang} onFinish={finishLogin} onBack={() => setScreen("choice")} />}
-      {screen === "app" && <AppShell {...shared} />}
+      {visor ? (
+        <Landing C={C} lang={lang} onStart={() => setVisor(false)} />
+      ) : screen === "landing" ? (
+        <Landing C={C} lang={lang} onStart={() => setScreen("wisp-landing")} />
+      ) : screen === "wisp-landing" ? (
+        <WispLanding C={C} onStart={() => setScreen("choice")} onLight={showVisor} />
+      ) : screen === "choice" ? (
+        <EntryChoice C={C} lang={lang} setLang={setLang} onCreate={startProfile} onLogin={startLogin} onBack={() => setScreen("wisp-landing")} />
+      ) : screen === "profile" ? (
+        <Profile C={C} lang={lang} username={username} setUsername={setUsername} loginPass={loginPass} setLoginPass={setLoginPass} onContinue={finishFreeWisp} onBack={() => setScreen("choice")} />
+      ) : screen === "onboard" ? (
+        <Onboard C={C} lang={lang} seed={seed} confirmed={seedConfirmed} setConfirmed={setSeedConfirmed} onFinish={finishUpgrade} onBack={() => setScreen("app")} />
+      ) : screen === "login" ? (
+        <Login C={C} lang={lang} onFinish={finishLogin} onBack={() => setScreen("choice")} />
+      ) : screen === "app" ? (
+        <AppShell {...shared} />
+      ) : null}
     </div>
   );
 }
