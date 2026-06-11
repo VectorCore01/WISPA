@@ -1,9 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 import { FACE_MONO } from "../lib/theme.js";
 
-// --- expression evaluator (recursive descent) ---
+// --- evaluator ---
 
-const FNS = { sqrt: Math.sqrt, sin: Math.sin, cos: Math.cos, tan: Math.tan, log: Math.log10, ln: Math.log };
+const trig = (Math.PI / 180).toString();
+
+const FNS = {
+  sqrt: Math.sqrt, sin: () => {}, cos: () => {}, tan: () => {},
+  asin: Math.asin, acos: Math.acos, atan: Math.atan,
+  log: Math.log10, ln: Math.log,
+  abs: Math.abs, floor: Math.floor, ceil: Math.ceil,
+};
 
 function tokenize(s) {
   const t = [];
@@ -18,152 +25,220 @@ function tokenize(s) {
       t.push({ t: "op", v: s[i] === "×" ? "*" : s[i] === "÷" ? "/" : s[i] });
       i++;
     } else if (s[i] === "(" || s[i] === ")") {
-      t.push({ t: s[i] === "(" ? "lp" : "rp" });
-      i++;
+      t.push({ t: s[i] === "(" ? "lp" : "rp" }); i++;
     } else if (s[i] === "π") { t.push({ t: "num", v: Math.PI }); i++; }
-    else if (s[i] === "e" && !/[a-z]/i.test(s[i + 1])) { t.push({ t: "num", v: Math.E }); i++; }
+    else if (s[i] === "!") { t.push({ t: "fact" }); i++; }
     else {
       let w = "";
       while (i < s.length && /[a-z]/i.test(s[i])) w += s[i++];
-      if (w === "pi") { t.push({ t: "num", v: Math.PI }); }
-      else if (w === "e") { t.push({ t: "num", v: Math.E }); }
-      else if (FNS[w]) { t.push({ t: "fn", v: w }); }
-      else { return null; }
+      if (w === "pi" || w === "π") t.push({ t: "num", v: Math.PI });
+      else if (w === "e") t.push({ t: "num", v: Math.E });
+      else if (w === "rand") t.push({ t: "num", v: Math.random() });
+      else if (FNS[w]) t.push({ t: "fn", v: w });
+      else if (w === "mod") t.push({ t: "op", v: "mod" });
+      else if (w === "deg") t.push({ t: "num", v: parseFloat(trig) });
+      else if (w === "rad") t.push({ t: "num", v: 1 });
+      else return null;
     }
   }
   return t;
 }
 
-function parse(tokens) {
+function parse(tokens, deg) {
   let i = 0;
-  function peek() { return tokens[i]; }
-  function consume() { return tokens[i++]; }
+  const peek = () => tokens[i];
+  const consume = () => tokens[i++];
+  const trigScale = deg ? Math.PI / 180 : 1;
 
-  function parseExpr() {
-    let a = parseTerm();
+  const sinFn = (x) => Math.sin(x * trigScale);
+  const cosFn = (x) => Math.cos(x * trigScale);
+  const tanFn = (x) => Math.tan(x * trigScale);
+
+  function expr() {
+    let a = term();
     while (peek() && peek().t === "op" && (peek().v === "+" || peek().v === "-")) {
-      const op = consume().v;
-      const b = parseTerm();
+      const op = consume().v; const b = term();
       a = op === "+" ? a + b : a - b;
     }
     return a;
   }
 
-  function parseTerm() {
-    let a = parsePow();
-    while (peek() && peek().t === "op" && (peek().v === "*" || peek().v === "/")) {
-      const op = consume().v;
-      const b = parsePow();
-      a = op === "*" ? a * b : (b !== 0 ? a / b : "Error");
+  function term() {
+    let a = pow();
+    while (peek() && peek().t === "op" && (peek().v === "*" || peek().v === "/" || peek().v === "mod")) {
+      const op = consume().v; const b = pow();
+      if (op === "mod") a = a % b;
+      else a = op === "*" ? a * b : (b !== 0 ? a / b : "Error");
     }
     return a;
   }
 
-  function parsePow() {
-    let a = parseUnary();
+  function pow() {
+    let a = unary();
     while (peek() && peek().t === "op" && peek().v === "^") {
-      consume();
-      const b = parseUnary();
-      a = Math.pow(a, b);
+      consume(); a = Math.pow(a, unary());
     }
     return a;
   }
 
-  function parseUnary() {
-    if (peek() && peek().t === "op" && peek().v === "-") {
-      consume();
-      return -parseUnary();
-    }
-    return parseAtom();
+  function unary() {
+    if (peek() && peek().t === "op" && peek().v === "-") { consume(); return -unary(); }
+    return atom();
   }
 
-  function parseAtom() {
+  function atom() {
     if (!peek()) return 0;
-    if (peek().t === "num") return consume().v;
+    if (peek().t === "num") {
+      const v = consume().v;
+      if (peek() && peek().t === "fact") { consume(); return factorial(v); }
+      return v;
+    }
+    if (peek().t === "fact") { consume(); return 0; }
     if (peek().t === "lp") {
-      consume();
-      const v = parseExpr();
+      consume(); const v = expr();
       if (peek() && peek().t === "rp") consume();
+      if (peek() && peek().t === "fact") { consume(); return factorial(v); }
       return v;
     }
     if (peek().t === "fn") {
       const f = consume().v;
       if (peek() && peek().t === "lp") consume();
-      const arg = parseExpr();
+      const arg = expr();
       if (peek() && peek().t === "rp") consume();
-      return FNS[f](arg);
+      let v;
+      if (f === "sin") v = sinFn(arg);
+      else if (f === "cos") v = cosFn(arg);
+      else if (f === "tan") v = tanFn(arg);
+      else v = FNS[f](arg);
+      if (peek() && peek().t === "fact") { consume(); return factorial(v); }
+      return v;
     }
     return 0;
   }
 
-  const r = parseExpr();
+  const r = expr();
   return isNaN(r) || !isFinite(r) ? "Error" : r;
 }
 
-function evalExpr(s) {
+function factorial(n) {
+  if (n < 0 || !Number.isInteger(n)) return "Error";
+  let r = 1;
+  for (let i = 2; i <= n; i++) r *= i;
+  return r;
+}
+
+function evalExpr(s, deg) {
+  if (s === "Error") return "Error";
   const t = tokenize(s);
   if (!t) return "Error";
-  return parse(t);
+  return parse(t, deg);
 }
 
-// --- helpers for inserting functions with auto-paren ---
-
-function needsParenBefore(expr) {
-  if (!expr.length) return false;
-  const c = expr[expr.length - 1];
-  return /[0-9.)πe]/.test(c);
+function toFraction(v, maxD) {
+  if (v === "Error" || !isFinite(v)) return null;
+  if (Number.isInteger(v)) return { n: v, d: 1 };
+  const sgn = v < 0 ? -1 : 1;
+  v = Math.abs(v);
+  let n1 = 0, d1 = 1, n2 = 1, d2 = 0, n = Math.floor(v), d = 1;
+  while (d <= maxD) {
+    const cand = n / d;
+    if (Math.abs(v - cand) < 1e-10) return { n: sgn * n, d };
+    const next = n1 + n2; const dnext = d1 + d2;
+    if (dnext > maxD) break;
+    if (v * dnext > next) { n = next; d = dnext; n1 = next; d1 = dnext; }
+    else { n2 = next; d2 = dnext; }
+    n = n1 + n2; d = d1 + d2;
+  }
+  return null;
 }
+
+function needsMul(expr) {
+  return expr.length > 0 && /[0-9.)πe!]/.test(expr[expr.length - 1]);
+}
+
+// --- grid rows ---
+
+const ROW1_NORM = [
+  { l: "(", a: "op" }, { l: ")", a: "cp" },
+  { l: "π", a: "π" }, { l: "e", a: "e" },
+];
+const ROW1_2ND = [
+  { l: "n!", a: "n!" }, { l: "abs", a: "abs", s: 12 },
+  { l: "asin", a: "asin", s: 11 }, { l: "acos", a: "acos", s: 11 },
+];
+
+const ROW2_NORM = [
+  { l: "x²", a: "x²", s: 14 }, { l: "x³", a: "x³", s: 14 },
+  { l: "^", a: "^" }, { l: "log", a: "log", s: 13 },
+];
+const ROW2_2ND = [
+  { l: "atan", a: "atan", s: 11 }, { l: "floor", a: "floor", s: 11 },
+  { l: "ceil", a: "ceil", s: 12 }, { l: "mod", a: "mod" },
+];
+
+const ROW3_NORM = [
+  { l: "sin", a: "sin", s: 13 }, { l: "cos", a: "cos", s: 13 },
+  { l: "tan", a: "tan", s: 13 }, { l: "ln", a: "ln", s: 14 },
+];
+const ROW3_2ND = [
+  { l: "rand", a: "rand", s: 11 }, { l: "D/R", a: "dr", s: 11 },
+  { l: "√", a: "√", s: 16 }, { l: " ", a: "none" },
+];
 
 // --- component ---
 
 export default function Landing({ C, lang, onStart }) {
   const [display, setDisplay] = useState("0");
   const [result, setResult] = useState(null);
+  const [mode2, setMode2] = useState(false);
+  const [deg, setDeg] = useState(true);
 
-  const refs = useRef({ display, result });
+  const refs = useRef({ display, result, deg });
   refs.current.display = display;
   refs.current.result = result;
+  refs.current.deg = deg;
 
   useEffect(() => {
     const fn = (e) => {
       const d = refs.current.display;
       const r = refs.current.result;
-      const s = (v) => { setDisplay(v); };
-      const sr = (v) => { setResult(v); };
-      const o = (op) => {
-        if (r !== null) { s(String(r) + op); sr(null); return; }
+      const de = refs.current.deg;
+      const s = (v) => setDisplay(v);
+      const sr = (v) => setResult(v);
+      const op = (ch) => {
+        if (r !== null) { s(String(r) + ch); sr(null); return; }
         const last = d.slice(-1);
-        s("+-×÷^".indexOf(last) !== -1 ? d.slice(0, -1) + op : d + op);
+        s("+-×÷^".indexOf(last) !== -1 ? d.slice(0, -1) + ch : d + ch);
       };
-      if (/^[0-9]$/.test(e.key)) { s(r !== null ? e.key : (d === "0" ? e.key : d + e.key)); if (r !== null) sr(null); return; }
+      if (/^[0-9]$/.test(e.key)) {
+        if (r !== null) { s(e.key); sr(null); } else { s(d === "0" ? e.key : d + e.key); }
+        return;
+      }
       if (e.key === ".") {
         if (r !== null) { s("0."); sr(null); return; }
         const parts = d.split(/[+\-×÷^()]/);
         if (!parts[parts.length - 1].includes(".")) s(d + ".");
         return;
       }
-      if (e.key === "+") { o("+"); return; }
-      if (e.key === "-") { o("-"); return; }
-      if (e.key === "*") { o("×"); return; }
-      if (e.key === "/") { e.preventDefault(); o("÷"); return; }
-      if (e.key === "^") { o("^"); return; }
+      if (e.key === "+") { op("+"); return; }
+      if (e.key === "-") { op("-"); return; }
+      if (e.key === "*") { op("×"); return; }
+      if (e.key === "/") { e.preventDefault(); op("÷"); return; }
+      if (e.key === "^") { op("^"); return; }
       if (e.key === "(") {
         if (r !== null) { s("("); sr(null); return; }
-        const p = d.length && /[0-9.)πe]/.test(d[d.length - 1]);
-        s(p ? d + "×(" : d + "(");
+        s(needsMul(d) ? d + "×(" : d + "(");
         return;
       }
       if (e.key === ")") { s(d + ")"); return; }
       if (e.key === "Enter" || e.key === "=") {
-        const v = evalExpr(d);
+        const v = evalExpr(d, de);
         s(String(v));
-        sr(v);
-        return;
+        sr(v); return;
       }
       if (e.key === "Backspace") {
         if (r !== null) { s("0"); sr(null); return; }
-        s(d.length > 1 ? d.slice(0, -1) : "0");
-        return;
+        s(d.length > 1 ? d.slice(0, -1) : "0"); return;
       }
       if (e.key === "Escape" || e.key === "Delete") { s("0"); sr(null); }
     };
@@ -176,55 +251,65 @@ export default function Landing({ C, lang, onStart }) {
     setDisplay(display === "0" ? val : display + val);
   };
 
-  const operate = (op) => {
-    if (result !== null) { setDisplay(String(result) + op); setResult(null); return; }
+  const operate = (ch) => {
+    if (result !== null) { setDisplay(String(result) + ch); setResult(null); return; }
     const last = display.slice(-1);
-    if ("+-×÷^".indexOf(last) !== -1) {
-      setDisplay(display.slice(0, -1) + op);
-    } else {
-      setDisplay(display + op);
-    }
+    setDisplay("+-×÷^".indexOf(last) !== -1 ? display.slice(0, -1) + ch : display + ch);
   };
 
   const openParen = () => {
     if (result !== null) { setDisplay("("); setResult(null); return; }
-    if (needsParenBefore(display)) setDisplay(display + "×(");
-    else setDisplay(display + "(");
+    setDisplay(needsMul(display) ? display + "×(" : display + "(");
   };
+  const closeParen = () => { setDisplay(display + ")"); };
 
-  const closeParen = () => {
-    setDisplay(display + ")");
-  };
-
-  const fnInsert = (name) => {
-    const expr = name + "(";
-    if (result !== null) { setDisplay(expr); setResult(null); return; }
-    if (needsParenBefore(display)) setDisplay(display + "×" + expr);
-    else setDisplay(display + expr);
+  const fnInsert = (name, label) => {
+    const ex = name + "(";
+    if (result !== null) { setDisplay(ex); setResult(null); return; }
+    setDisplay(needsMul(display) ? display + "×" + ex : display + ex);
   };
 
   const insertConst = (label) => {
     if (result !== null) { setDisplay(label); setResult(null); return; }
-    if (needsParenBefore(display)) setDisplay(display + "×" + label);
-    else setDisplay(display + label);
+    setDisplay(needsMul(display) ? display + "×" + label : display + label);
   };
 
   const power2 = () => {
     if (result !== null) { setDisplay(String(result) + "^2"); setResult(null); return; }
-    if (needsParenBefore(display)) setDisplay(display + "^2");
-    else setDisplay(display + "^2");
+    setDisplay(needsMul(display) ? display + "^2" : display + "^2");
   };
-
   const power3 = () => {
     if (result !== null) { setDisplay(String(result) + "^3"); setResult(null); return; }
-    if (needsParenBefore(display)) setDisplay(display + "^3");
-    else setDisplay(display + "^3");
+    setDisplay(needsMul(display) ? display + "^3" : display + "^3");
+  };
+
+  const doFactorial = () => {
+    if (result !== null) { setDisplay(String(result) + "!"); setResult(null); return; }
+    setDisplay(needsMul(display) ? display + "!" : display + "!");
+  };
+
+  const insertMod = () => { operate("mod"); };
+
+  const insertRand = () => {
+    setDisplay(needsMul(display) ? display + "×rand" : display + "rand");
+  };
+
+  const toggleDR = () => {
+    setDeg(!deg);
+    setDisplay(display);
   };
 
   const equals = () => {
-    const v = evalExpr(display);
+    const v = evalExpr(display, deg);
     setDisplay(String(v));
     setResult(v);
+  };
+
+  const toggleFD = () => {
+    if (result !== null && Number.isFinite(result) && result !== "Error") {
+      const f = toFraction(result, 1000);
+      if (f && f.d !== 1) setDisplay(f.n + "/" + f.d);
+    }
   };
 
   const allClear = () => { setDisplay("0"); setResult(null); };
@@ -232,11 +317,39 @@ export default function Landing({ C, lang, onStart }) {
     if (result !== null) { allClear(); return; }
     setDisplay(display.length > 1 ? display.slice(0, -1) : "0");
   };
-
   const addDot = () => {
     if (result !== null) { setDisplay("0."); setResult(null); return; }
     const parts = display.split(/[+\-×÷^()]/);
     if (!parts[parts.length - 1].includes(".")) setDisplay(display + ".");
+  };
+
+  const handle2ndAction = (action) => {
+    switch (action) {
+      case "op": return openParen;
+      case "cp": return closeParen;
+      case "π": return () => insertConst("π");
+      case "e": return () => insertConst("e");
+      case "x²": return power2;
+      case "x³": return power3;
+      case "^": return () => operate("^");
+      case "log": return () => fnInsert("log");
+      case "sin": return () => fnInsert("sin");
+      case "cos": return () => fnInsert("cos");
+      case "tan": return () => fnInsert("tan");
+      case "ln": return () => fnInsert("ln");
+      case "√": return () => fnInsert("sqrt");
+      case "n!": return doFactorial;
+      case "abs": return () => fnInsert("abs");
+      case "asin": return () => fnInsert("asin");
+      case "acos": return () => fnInsert("acos");
+      case "atan": return () => fnInsert("atan");
+      case "floor": return () => fnInsert("floor");
+      case "ceil": return () => fnInsert("ceil");
+      case "mod": return insertMod;
+      case "rand": return insertRand;
+      case "dr": return toggleDR;
+      default: return () => {};
+    }
   };
 
   const B = ({ label, action, light, blue, style: extra, s }) => (
@@ -251,7 +364,18 @@ export default function Landing({ C, lang, onStart }) {
     }}>{label}</button>
   );
 
-  const grid = { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 };
+  const grid = { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 5 };
+
+  const row = (btns) => (
+    <div style={grid}>
+      {btns.map((b, i) => {
+        if (b.a === "none") return <div key={i} />;
+        const fn = handle2ndAction(b.a);
+        const isNum = !b.light && !b.blue;
+        return <B key={i} label={b.l} action={fn} light={b.light} blue={b.blue} s={b.s || (isNum ? 18 : 14)} />;
+      })}
+    </div>
+  );
 
   return (
     <div style={{
@@ -262,66 +386,71 @@ export default function Landing({ C, lang, onStart }) {
       justifyContent: "center", padding: "0 24px", fontFamily: FACE_MONO,
     }}>
       <div style={{
-        background: "#FFFFFF", borderRadius: 24, padding: "20px 16px 24px",
+        background: "#FFFFFF", borderRadius: 24, padding: "16px 14px 20px",
         boxShadow: "0 12px 40px rgba(0,0,0,0.08)",
         width: "100%", maxWidth: 320,
       }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: "0.12em", color: "#6B6B6B" }}>CLCLTR</span>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: "0.12em", color: "#6B6B6B" }}>CLCLTR</span>
+            <button onClick={() => setMode2(!mode2)} style={{
+              background: mode2 ? "#1A1A1A" : "#E8E8E8", border: "none", borderRadius: 4,
+              color: mode2 ? "#FFF" : "#1A1A1A", fontSize: 10, fontWeight: 700,
+              padding: "2px 6px", cursor: "pointer", fontFamily: FACE_MONO,
+            }}>2nd</button>
+          </div>
           <button onClick={onStart} style={{
             background: "transparent", border: "none", color: "#6B6B6B",
             fontSize: 12, cursor: "pointer", fontFamily: FACE_MONO,
             display: "flex", alignItems: "center", gap: 4,
           }}>
-            <span style={{ fontSize: 15 }}>☽</span> Dark
+            <span style={{ fontSize: 14 }}>☽</span> Dark
           </button>
         </div>
 
         <div style={{
-          background: "#F5F5F5", borderRadius: 12, padding: "14px 16px",
-          marginBottom: 16, textAlign: "right", fontSize: 24, fontWeight: 700,
-          color: "#1A1A1A", fontFamily: FACE_MONO, minHeight: 48,
+          background: "#F5F5F5", borderRadius: 12, padding: "12px 14px",
+          marginBottom: 12, textAlign: "right", fontSize: 22, fontWeight: 700,
+          color: "#1A1A1A", fontFamily: FACE_MONO, minHeight: 40,
           letterSpacing: "0.02em", overflow: "hidden", wordBreak: "break-all", lineHeight: 1.3,
         }}>
           {display}
         </div>
 
+        {row(mode2 ? ROW1_2ND : ROW1_NORM)}
+        <div style={{ height: 5 }} />
+        {row(mode2 ? ROW2_2ND : ROW2_NORM)}
+        <div style={{ height: 5 }} />
+        {row(mode2 ? ROW3_2ND : ROW3_NORM)}
+        <div style={{ height: 5 }} />
+
         <div style={grid}>
-          <B label="(" s={16} action={openParen} light />
-          <B label=")" s={16} action={closeParen} light />
-          <B label="π" s={16} action={() => insertConst("π")} light />
-          <B label="√" s={18} action={() => fnInsert("sqrt")} light />
-          <B label="x²" s={14} action={power2} light />
-          <B label="x³" s={14} action={power3} light />
-          <B label="^" s={18} action={() => operate("^")} light />
-          <B label="log" s={13} action={() => fnInsert("log")} light />
-          <B label="sin" s={13} action={() => fnInsert("sin")} light />
-          <B label="cos" s={13} action={() => fnInsert("cos")} light />
-          <B label="tan" s={13} action={() => fnInsert("tan")} light />
-          <B label="ln" s={14} action={() => fnInsert("ln")} light />
-          <B label="C" action={allClear} light />
-          <B label="÷" action={() => operate("÷")} light />
-          <B label="×" action={() => operate("×")} light />
-          <B label="⌫" action={backspace} light />
+          <B label="C" action={allClear} light s={16} />
+          <B label="÷" action={() => operate("÷")} light s={16} />
+          <B label="×" action={() => operate("×")} light s={16} />
+          <B label="⌫" action={backspace} light s={14} />
           <B label="7" action={() => input("7")} />
           <B label="8" action={() => input("8")} />
           <B label="9" action={() => input("9")} />
-          <B label="-" action={() => operate("-")} light />
+          <B label="-" action={() => operate("-")} light s={18} />
           <B label="4" action={() => input("4")} />
           <B label="5" action={() => input("5")} />
           <B label="6" action={() => input("6")} />
-          <B label="+" action={() => operate("+")} light />
+          <B label="+" action={() => operate("+")} light s={18} />
           <B label="1" action={() => input("1")} />
           <B label="2" action={() => input("2")} />
           <B label="3" action={() => input("3")} />
           <B label="=" action={equals} blue />
           <B label="0" action={() => input("0")} style={{ aspectRatio: "auto", gridColumn: "span 2" }} />
-          <B label="." action={addDot} />
+          <B label="." action={addDot} s={18} />
+          <B label="F↔D" action={toggleFD} s={10} light />
         </div>
       </div>
 
-      <div style={{ position: "fixed", bottom: 20, fontSize: 10, color: "#AAA", letterSpacing: "0.08em" }}>
-        v1.0.3
+      <div style={{
+        position: "fixed", bottom: 12, fontSize: 9, color: "#AAA", letterSpacing: "0.08em",
+      }}>
+        CLCLTR v2.0 · {deg ? "DEG" : "RAD"}
       </div>
     </div>
   );
