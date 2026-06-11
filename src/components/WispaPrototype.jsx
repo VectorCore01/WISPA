@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useRef } from "react";
 import { THEMES, honeycombBg } from "../lib/theme.js";
-import { genSeed, genWispId, genHiveId, genMsgKey, nowTime, DEMO_LIFETIME_MS, seedCells, seedHiveMembers, lookupPeer } from "../lib/helpers.js";
+import { genSeed, genWispId, genHiveId, genMsgKey, genHiveKey, nowTime, seedCells, seedHiveMembers, lookupPeer, capPerSender, CELL_MSG_PER_SENDER } from "../lib/helpers.js";
 import { t } from "../lib/translations.js";
 import Landing from "./Landing.jsx";
 import EntryChoice from "./EntryChoice.jsx";
@@ -15,7 +15,7 @@ export default function WispaPrototype() {
 
   const [lang, setLang] = useState("en");
   const [screen, setScreen] = useState("landing");
-  const [tier, setTier] = useState("wisp"); // "wisp" (free, cells fade) | "pro" (paid, permanent)
+  const [tier, setTier] = useState("wisp"); // "wisp" | "pro"
   const [seed, setSeed] = useState([]);
   const [seedConfirmed, setSeedConfirmed] = useState(false);
   const [wispId, setWispId] = useState("");
@@ -28,30 +28,14 @@ export default function WispaPrototype() {
 
   const [cells, setCells] = useState(seedCells());
   const [activeCell, setActiveCell] = useState(null);
-  const [now, setNow] = useState(Date.now());
 
-  const [hiveCfg, setHiveCfg] = useState(null); // { name, pass } once the channel is created
+  const msgIdRef = useRef(Date.now());
+
+  const [hiveCfg, setHiveCfg] = useState(null); // { name, key } once the channel is created
   const [hiveMembers, setHiveMembers] = useState([]);
   const [hivePosts, setHivePosts] = useState([]);
 
   const isPro = tier === "pro";
-
-  useEffect(() => {
-    const iv = setInterval(() => {
-      const t = Date.now();
-      setNow(t);
-      if (!isPro) {
-        setCells((cs) => {
-          const survivors = cs.filter((c) => t - c.lastActivity < DEMO_LIFETIME_MS);
-          if (survivors.length !== cs.length) {
-            setActiveCell((a) => (survivors.some((c) => c.id === a) ? a : null));
-          }
-          return survivors;
-        });
-      }
-    }, 1000);
-    return () => clearInterval(iv);
-  }, [isPro]);
 
   function notify(msg) { setToast(msg); setTimeout(() => setToast(null), 2600); }
 
@@ -59,7 +43,7 @@ export default function WispaPrototype() {
   function startLogin() { setScreen("login"); }
 
   // Free signup → a WISP. Logs back in with id + the password chosen here.
-  // No 24 words. Cells fade. Can send messages + images only.
+  // No 24 words. Cells roll max 4 messages (2 per person).
   function finishFreeWisp() {
     setTier("wisp");
     setWispId(genWispId());
@@ -117,8 +101,9 @@ export default function WispaPrototype() {
     notify(t(lang, "Name updated."));
   }
 
-  function createHive(name, pass) {
-    setHiveCfg({ name: name.trim(), pass: pass.trim() });
+  function createHive(name) {
+    const key = genHiveKey();
+    setHiveCfg({ name: name.trim(), key });
     notify(t(lang, "Hive channel created."));
   }
   function approveMember(id) {
@@ -128,19 +113,30 @@ export default function WispaPrototype() {
     setHiveMembers((m) => m.filter((x) => x.id !== id));
   }
 
-  // msg is either { text } or an attachment { kind, name, size, url }.
-  // Attachments start sealed (opened: false) and must be opened to be seen.
-  function sendInCell(cellId, msg) {
-    setCells((cs) => cs.map((c) =>
-      c.id === cellId
-        ? { ...c, lastActivity: Date.now(), seen: true, current: { from: "me", kind: "text", time: nowTime(), opened: false, ...msg } }
-        : c
-    ));
+  function destroyHive() {
+    setHiveCfg(null);
+    setHiveMembers([]);
+    setHivePosts([]);
+    notify("Hive destroyed. You can create a new one anytime.");
   }
 
-  function openCellAttachment(cellId) {
+  // msg is either { text } or an attachment { kind, name, size, url }.
+  // Attachments start sealed (opened: false) and must be opened to be seen.
+  // Rolling window: max 4 messages (2 per sender) — oldest drops off.
+  function sendInCell(cellId, msg) {
+    const entry = { id: ++msgIdRef.current, from: "me", kind: "text", time: nowTime(), opened: false, ...msg };
+    setCells((cs) => cs.map((c) => {
+      if (c.id !== cellId) return c;
+      const updated = [...c.messages, entry];
+      return { ...c, lastActivity: Date.now(), seen: true, messages: capPerSender(updated, CELL_MSG_PER_SENDER) };
+    }));
+  }
+
+  function openCellAttachment(cellId, msgId) {
     setCells((cs) => cs.map((c) =>
-      c.id === cellId && c.current ? { ...c, current: { ...c.current, opened: true } } : c
+      c.id === cellId
+        ? { ...c, messages: c.messages.map((m) => m.id === msgId ? { ...m, opened: true } : m) }
+        : c
     ));
   }
 
@@ -167,7 +163,7 @@ export default function WispaPrototype() {
     }
     const id = Date.now();
     // authed: true — you typed their key to open this cell.
-    setCells((cs) => [{ id, peer, peerName: res.name, authed: true, lastActivity: Date.now(), current: null, seen: true }, ...cs]);
+    setCells((cs) => [{ id, peer, peerName: res.name, authed: true, lastActivity: Date.now(), messages: [], seen: true }, ...cs]);
     setActiveCell(id);
     setTab("cells");
     return true;
@@ -195,13 +191,12 @@ export default function WispaPrototype() {
   const shared = {
     C, mode, lang, setLang,
     tier, isPro, wispId, hiveId, myId: wispId, username, msgKey, loginPass,
-    hasHive: isPro, // Pro accounts keep their cells alive and can send video/files
+    hasHive: isPro, // Pro can send video/files and owns a Hive
     tab, setTab, notify, setScreen,
     cells, activeCell, setActiveCell, openCell, sendInCell, openCellAttachment, startNewCell, unlockCell,
     startUpgrade, changeName,
-    hiveCfg, createHive, hiveMembers, approveMember, rejectMember,
+    hiveCfg, createHive, hiveMembers, approveMember, rejectMember, destroyHive,
     hivePosts, postToHive,
-    now, lifetime: DEMO_LIFETIME_MS,
   };
 
   return (

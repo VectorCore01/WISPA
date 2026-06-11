@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { FACE_MONO, ENGRAVE } from "../lib/theme.js";
-import { fmtCountdown, attachKindOf } from "../lib/helpers.js";
+import { attachKindOf } from "../lib/helpers.js";
 import Attachment from "./Attachment.jsx";
 
 function TermHead({ C, children, mb = 4 }) {
@@ -17,7 +17,7 @@ function Panel({ C, children, style }) {
 }
 
 export default function CellsTab(props) {
-  const { C, cells, activeCell, setActiveCell, openCell, startNewCell, notify, hasHive, now, lifetime, setTab } = props;
+  const { C, cells, activeCell, setActiveCell, openCell, startNewCell, notify, hasHive, setTab } = props;
   const [newPeer, setNewPeer] = useState("");
   const [newKey, setNewKey] = useState("");
 
@@ -39,16 +39,9 @@ export default function CellsTab(props) {
       <TermHead C={C} mb={4}>cells</TermHead>
       <p style={{ color: C.textDim, fontSize: 14, marginBottom: 14 }}>
         {hasHive
-          ? "WISP Pro — your cells are permanent and you can send videos and files."
-          : "Free WISP — messages and images only, and each cell self-destructs 1h after the last message."}
+          ? "WISP Pro — send videos and files. Each cell shows the latest 4 messages (2 per person)."
+          : "Free WISP — messages and images only. Each cell shows the latest 4 messages (2 per person)."}
       </p>
-
-      {!hasHive && (
-        <button onClick={() => setTab("hive")} style={{ width: "100%", textAlign: "left", background: C.surface, border: `1px dashed ${C.accent}`, borderRadius: 6, padding: "11px 14px", color: C.text, fontSize: 13, marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span><span style={{ color: C.accent }}>!</span> Cells fade on free WISP — go Pro to keep them forever</span>
-          <span style={{ color: C.accent, ...ENGRAVE, letterSpacing: "0.08em", fontSize: 11 }}>Get Pro →</span>
-        </button>
-      )}
 
       <div style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 6, padding: 8, marginBottom: 18 }}>
         <input value={newPeer} onChange={(e) => setNewPeer(e.target.value)} onKeyDown={(e) => e.key === "Enter" && start()} placeholder="Their WISP id — WISP-000000" style={{ width: "100%", background: "transparent", border: "none", outline: "none", borderBottom: `1px solid ${C.line}`, borderRadius: 0, padding: "10px 8px", color: C.text, fontSize: 14, fontFamily: FACE_MONO }} />
@@ -61,24 +54,22 @@ export default function CellsTab(props) {
 
       <div style={{ display: "grid", gap: 10 }}>
         {cells.map((cell) => {
-          const left = lifetime - (now - cell.lastActivity);
-          const expiring = !hasHive && left < lifetime * 0.3;
-          const unread = cell.current && cell.current.from === "them" && !cell.seen;
+          const latest = cell.messages.length > 0 ? cell.messages[cell.messages.length - 1] : null;
+          const unread = latest && latest.from === "them" && !cell.seen;
           let preview;
-          if (!cell.current) preview = "empty cell";
-          else if (unread) preview = "● new message";
-          else if (cell.current.from === "me") preview = "you · waiting for reply";
-          else preview = "opened";
+          if (!latest) preview = "empty cell";
+          else if (cell.messages.length === 4) preview = "cell full · 4 messages";
+          else preview = `${cell.messages.length}/4 messages`;
           return (
-            <button key={cell.id} onClick={() => openCell(cell.id)} style={{ textAlign: "left", background: C.surface, border: `1px solid ${expiring ? C.danger : unread ? C.accent : C.line}`, borderRadius: 6, padding: "14px 16px", color: C.text, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+            <button key={cell.id} onClick={() => openCell(cell.id)} style={{ textAlign: "left", background: C.surface, border: `1px solid ${unread ? C.accent : C.line}`, borderRadius: 6, padding: "14px 16px", color: C.text, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontFamily: FACE_MONO, fontWeight: 700, fontSize: 15 }}>{cell.peerName || cell.peer}</div>
                 <div style={{ fontSize: 13, color: unread ? C.accent : C.textDim, fontWeight: unread ? 700 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   <span style={{ fontFamily: FACE_MONO, opacity: 0.7 }}>{cell.peer}</span> · {preview}
                 </div>
               </div>
-              <span style={{ flexShrink: 0, fontFamily: FACE_MONO, fontSize: 12, color: hasHive ? C.textDim : expiring ? C.danger : C.accent }}>
-                {hasHive ? "kept" : `⛬ ${fmtCountdown(left)}`}
+              <span style={{ flexShrink: 0, fontFamily: FACE_MONO, fontSize: 12, color: C.textDim }}>
+                {hasHive ? "pro" : "free"}
               </span>
             </button>
           );
@@ -88,16 +79,15 @@ export default function CellsTab(props) {
   );
 }
 
-function CellChat({ C, cell, onBack, sendInCell, openCellAttachment, unlockCell, hasHive, isPro, setTab, notify, now, lifetime }) {
+function CellChat({ C, cell, onBack, sendInCell, openCellAttachment, unlockCell, hasHive, isPro, setTab, notify }) {
   const [draft, setDraft] = useState("");
   const imageRef = useRef(null);
   const videoRef = useRef(null);
   const fileRef = useRef(null);
+  const scrollRef = useRef(null);
 
-  const left = lifetime - (now - cell.lastActivity);
-  const expiring = !hasHive && left < lifetime * 0.3;
-  const msg = cell.current;
-  const isAttachment = msg && (msg.kind === "image" || msg.kind === "video" || msg.kind === "file");
+  const msgs = cell.messages || [];
+  const full = msgs.length >= 4;
 
   function send() {
     if (!draft.trim()) return;
@@ -136,31 +126,43 @@ function CellChat({ C, cell, onBack, sendInCell, openCellAttachment, unlockCell,
           <div style={{ fontFamily: FACE_MONO, fontWeight: 700, fontSize: 17 }}>{cell.peerName || cell.peer}</div>
           <div style={{ fontFamily: FACE_MONO, fontSize: 11, color: C.textDim }}>{cell.peer}</div>
         </div>
-        <div style={{ fontSize: 12, fontFamily: FACE_MONO, color: hasHive ? C.textDim : expiring ? C.danger : C.accent }}>
-          {hasHive ? "permanent" : `⛬ self-destruct ${fmtCountdown(left)}`}
+        <div style={{ fontSize: 12, fontFamily: FACE_MONO, color: C.textDim }}>
+          {full ? "4/4 · full" : `${msgs.length}/4`}
         </div>
       </div>
 
-      <div style={{ minHeight: 300, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 14 }}>
-        {!msg && (
-          <div style={{ color: C.textDim, fontSize: 14, textAlign: "center" }}>Empty cell. Whisper something — only your last message is ever shown.</div>
+      <div ref={scrollRef} style={{ minHeight: 300, display: "flex", flexDirection: "column", gap: 10, marginBottom: 14, overflowY: "auto", padding: "4px 0" }}>
+        {msgs.length === 0 && (
+          <div style={{ color: C.textDim, fontSize: 14, textAlign: "center", marginTop: 120 }}>Empty cell. Send a message to start.</div>
         )}
-        {msg && (
-          <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: msg.from === "me" ? "flex-end" : "flex-start" }}>
-            {isAttachment ? (
-              <div style={{ maxWidth: "80%", padding: 10, borderRadius: 8, background: C.surface, border: `1px solid ${C.line}` }}>
-                <Attachment C={C} post={msg} isPro={isPro} opened={!!msg.opened} onOpen={() => openCellAttachment(cell.id)} />
-              </div>
-            ) : (
-              <div style={{ maxWidth: "80%", padding: "16px 18px", borderRadius: 8, background: msg.from === "me" ? C.text : C.surface, color: msg.from === "me" ? C.bg : C.text, border: msg.from === "me" ? "none" : `1px solid ${C.line}`, fontSize: 17, lineHeight: 1.45 }}>
-                {msg.text}
-              </div>
-            )}
-            <div style={{ fontSize: 11, color: C.textDim, marginTop: 6, fontFamily: FACE_MONO }}>
-              {msg.from === "me" ? "you · waiting for reply" : "from them · reply to clear"} · {msg.time}
-            </div>
+        {full && msgs.length > 0 && (
+          <div style={{ fontSize: 11, color: C.textDim, textAlign: "center", fontFamily: FACE_MONO, padding: "4px 0" }}>
+            ⛛ oldest messages dropped · rolling window of 4
           </div>
         )}
+        {msgs.map((msg) => {
+          const isAttachment = msg.kind === "image" || msg.kind === "video" || msg.kind === "file";
+          const isMine = msg.from === "me";
+          return (
+            <div key={msg.id} style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: isMine ? "flex-end" : "flex-start" }}>
+              {isAttachment ? (
+                <div style={{ maxWidth: "80%", padding: 10, borderRadius: 8, background: C.surface, border: `1px solid ${C.line}` }}>
+                  <Attachment C={C} post={msg} isPro={isPro} opened={!!msg.opened} onOpen={() => openCellAttachment(cell.id, msg.id)} />
+                  {isPro && msg.opened && (
+                    <div style={{ marginTop: 6, fontSize: 11, color: C.textDim, fontFamily: FACE_MONO }}>● download enabled (Pro)</div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ maxWidth: "80%", padding: "16px 18px", borderRadius: 8, background: isMine ? C.text : C.surface, color: isMine ? C.bg : C.text, border: isMine ? "none" : `1px solid ${C.line}`, fontSize: 17, lineHeight: 1.45 }}>
+                  {msg.text}
+                </div>
+              )}
+              <div style={{ fontSize: 11, color: C.textDim, marginTop: 6, fontFamily: FACE_MONO }}>
+                {msg.from === "me" ? "you" : "them"} · {msg.time}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {cell.authed ? (

@@ -40,16 +40,6 @@ export function nowTime() {
   return new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 }
 
-export const DEMO_LIFETIME_MS = 90 * 1000;
-
-export function fmtCountdown(ms) {
-  if (ms <= 0) return "0:00";
-  const total = Math.ceil(ms / 1000);
-  const m = Math.floor(total / 60);
-  const s = total % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
-
 // Simulated account directory. In a real app this lives on the server:
 // to open a cell with someone you must know their WISP id AND their 6-digit
 // message key. Without both, no cell can be opened — this stops anyone from
@@ -67,24 +57,42 @@ export function lookupPeer(wispId, key) {
   return { ok: true, name: entry.name };
 }
 
-// Demo join requests + members for a freshly opened Hive channel, so the
-// "approve individual users" flow is visible right away.
+// Keep only the last `n` messages PER sender, so a cell holds at most n*2
+// messages (e.g. 2 yours + 2 theirs = 4). Older ones drop off.
+export function capPerSender(msgs, n) {
+  const counts = {};
+  const kept = [];
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    const from = msgs[i].from;
+    counts[from] = (counts[from] || 0) + 1;
+    if (counts[from] <= n) kept.unshift(msgs[i]);
+  }
+  return kept;
+}
+
+export const CELL_MSG_PER_SENDER = 2;
+
+// Demo join requests + members for a freshly opened Hive channel. Each request
+// carries the 6-digit code the requester sent — the owner activates with it.
 export function seedHiveMembers() {
   return [
-    { id: "WISP-118402", name: "moth", status: "pending" },
-    { id: "WISP-552071", name: "petal", status: "pending" },
-    { id: "WISP-660913", name: "cedar", status: "approved" },
+    { id: "WISP-118402", name: "moth", status: "pending", key: "771203" },
+    { id: "WISP-552071", name: "petal", status: "pending", key: "094412" },
+    { id: "WISP-660913", name: "cedar", status: "approved", key: "330821" },
   ];
 }
 
 // `authed` = you have entered this peer's 6-digit key for this cell. Cells you
 // start yourself are authed (you typed the key to open them). Incoming cells
 // start un-authed: you must enter the peer's key before you can reply.
+// `messages` holds at most 4 entries (2 per sender).
 export function seedCells() {
   const now = Date.now();
   return [
-    { id: 1, peer: "WISP-204913", peerName: "nightjar", authed: false, lastActivity: now - 30 * 1000, current: { from: "them", text: "Are we still on for tonight?", kind: "text", time: "21:04" }, seen: false },
-    { id: 2, peer: "WISP-771028", peerName: "driftwood", authed: false, lastActivity: now - 55 * 1000, current: { from: "them", text: "Sent you the files. Open when ready.", kind: "text", time: "18:30" }, seen: false },
-    { id: 3, peer: "WISP-318864", peerName: "ember", authed: false, lastActivity: now, current: null, seen: true },
+    { id: 1, peer: "WISP-204913", peerName: "nightjar", authed: false, lastActivity: now - 30 * 1000, seen: false, messages: [{ id: 11, from: "them", text: "Are we still on for tonight?", kind: "text", time: "21:04" }] },
+    { id: 2, peer: "WISP-771028", peerName: "driftwood", authed: false, lastActivity: now - 55 * 1000, seen: false, messages: [{ id: 21, from: "them", text: "Sent you the files. Open when ready.", kind: "text", time: "18:30" }] },
+    { id: 3, peer: "WISP-318864", peerName: "ember", authed: false, lastActivity: now, seen: true, messages: [] },
   ];
 }
+
+export function genHiveKey() { return rand6(); }

@@ -31,8 +31,8 @@ export default function AccountTab({ C, tier, isPro, wispId, hiveId, username, m
         <div style={{ fontWeight: 700, ...ENGRAVE, letterSpacing: "0.12em", color: isPro ? C.accent : C.text }}>{isPro ? "WISP PRO" : "WISP"}</div>
         <p style={{ color: C.textDim, fontSize: 13, marginTop: 4 }}>
           {isPro
-            ? "Permanent cells, video + files, your own Hive. Secured by your 24 words."
-            : "Free account. Messages + images, and your cells self-destruct 1h after the last message."}
+            ? "Video + files, your own Hive. Cells roll 4 messages (2 per person). Secured by your 24 words."
+            : "Free account. Messages + images only. Cells roll 4 messages (2 per person)."}
         </p>
       </Panel>
 
@@ -81,14 +81,14 @@ export default function AccountTab({ C, tier, isPro, wispId, hiveId, username, m
       {isPro ? (
         <Panel C={C} style={{ padding: 18, marginBottom: 16 }}>
           <div style={{ fontWeight: 700, marginBottom: 6 }}>Your Hive id</div>
-          <p style={{ color: C.textDim, fontSize: 14, lineHeight: 1.5, marginBottom: 10 }}>The fixed address of your channel. Open the Hive tab to run it.</p>
+          <p style={{ color: C.textDim, fontSize: 14, lineHeight: 1.5, marginBottom: 10 }}>The fixed address of your channel. Open the Hive tab to run it. As Pro owner, you can destroy and recreate your Hive anytime.</p>
           <div style={{ fontFamily: FACE_MONO, fontSize: 22, color: C.text, letterSpacing: "0.05em" }}>{hiveId}</div>
         </Panel>
       ) : (
         <Panel C={C} style={{ padding: 18, marginBottom: 16, borderColor: C.accent }}>
           <div style={{ fontWeight: 700, marginBottom: 6 }}>Upgrade to WISP Pro</div>
           <p style={{ color: C.textDim, fontSize: 14, lineHeight: 1.5, marginBottom: 14 }}>
-            €{HIVE_PRICE.toFixed(2)}/month. Get a 24-word key, permanent cells, video + file sending, an editable name, and your own Hive channel.
+            €{HIVE_PRICE.toFixed(2)}/month. Get a 24-word key, video + file sending, an editable name, and your own Hive channel with 6-digit key.
           </p>
           <button onClick={startUpgrade} style={{ width: "100%", background: C.text, color: C.bg, padding: 14, borderRadius: 4, ...ENGRAVE, letterSpacing: "0.12em", fontSize: 13 }}>
             Go Pro · €{HIVE_PRICE.toFixed(2)} / month

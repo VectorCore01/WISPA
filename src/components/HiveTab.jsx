@@ -44,7 +44,7 @@ function BecomePro({ C, startUpgrade }) {
 
       <Panel C={C} style={{ padding: 20, marginBottom: 16 }}>
         <div style={{ display: "grid", gap: 12 }}>
-          {["A 24-word key to secure your account", "A fixed Hive id that never changes", "Your cells stop self-destructing", "Send videos and files in your cells", "Run a Hive channel — name, password, your members"].map((line) => (
+          {["A 24-word key to secure your account", "A fixed Hive id that never changes", "Send videos and files in your cells", "Run a Hive channel with a 6-digit key", "Download attachments from sealed cells"].map((line) => (
             <div key={line} style={{ display: "flex", gap: 12, alignItems: "center", fontSize: 14 }}>
               <span style={{ width: 14, height: 16, clipPath: HEX_CLIP, background: C.accent, display: "inline-block", flexShrink: 0 }} />
               {line}
@@ -64,12 +64,10 @@ function BecomePro({ C, startUpgrade }) {
 // ── For WISPs without a channel yet: create it ───────────────────────────────
 function CreateHive({ C, hiveId, createHive, notify }) {
   const [name, setName] = useState("");
-  const [pass, setPass] = useState("");
 
   function submit() {
     if (name.trim().length < 3) return notify("Give your channel a name (3+ characters).");
-    if (pass.trim().length < 4) return notify("Set a channel password (4+ characters).");
-    createHive(name, pass);
+    createHive(name);
   }
 
   const field = { width: "100%", background: C.bg, border: `1px solid ${C.line}`, borderRadius: 4, padding: "12px 14px", color: C.text, fontSize: 15, fontFamily: FACE_MONO, outline: "none", marginBottom: 12 };
@@ -80,12 +78,11 @@ function CreateHive({ C, hiveId, createHive, notify }) {
       <Panel C={C} style={{ padding: 20, marginBottom: 16 }}>
         <div style={{ fontWeight: 700, marginBottom: 6 }}>Open your channel</div>
         <p style={{ color: C.textDim, fontSize: 14, lineHeight: 1.5, marginBottom: 16 }}>
-          Your Hive lives at <span style={{ fontFamily: FACE_MONO, color: C.text }}>{hiveId}</span>. Give it a name and a password — people request to join with the password, and you approve who gets in.
+          Your Hive lives at <span style={{ fontFamily: FACE_MONO, color: C.text }}>{hiveId}</span>. Give it a name — a 6-digit Hive-Key will be generated. Share your WISP id + the 6-digit key so people can request to join.
         </p>
         <label style={{ display: "block", fontSize: 13, color: C.textDim, marginBottom: 6, fontFamily: FACE_MONO }}>Channel name</label>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. night-signal" maxLength={32} style={field} />
-        <label style={{ display: "block", fontSize: 13, color: C.textDim, marginBottom: 6, fontFamily: FACE_MONO }}>Channel password</label>
-        <input type="password" value={pass} onChange={(e) => setPass(e.target.value)} placeholder="people need this to request to join" maxLength={32} style={field} />
+        <p style={{ fontSize: 12, color: C.textDim, marginBottom: 12, lineHeight: 1.5 }}>A random 6-digit Hive-Key will be created. Share it with people you want to invite. Nothing happens without the 6-digit key.</p>
         <button onClick={submit} style={{ width: "100%", background: C.text, color: C.bg, padding: 14, borderRadius: 4, ...ENGRAVE, letterSpacing: "0.12em", fontSize: 13 }}>Create channel</button>
       </Panel>
     </div>
@@ -93,7 +90,7 @@ function CreateHive({ C, hiveId, createHive, notify }) {
 }
 
 // ── For WISPs with a live channel ────────────────────────────────────────────
-function HiveChannel({ C, isPro, hiveId, hiveCfg, hivePosts, postToHive, hiveMembers, approveMember, rejectMember, notify }) {
+function HiveChannel({ C, isPro, hiveId, hiveCfg, hivePosts, postToHive, hiveMembers, approveMember, rejectMember, destroyHive, notify }) {
   const [draft, setDraft] = useState("");
   const [opened, setOpened] = useState({}); // post id → revealed
   const fileRef = useRef(null);
@@ -117,12 +114,16 @@ function HiveChannel({ C, isPro, hiveId, hiveCfg, hivePosts, postToHive, hiveMem
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
         <div>
           <TermHead C={C} mb={4}>{hiveCfg.name}</TermHead>
           <div style={{ fontFamily: FACE_MONO, fontSize: 13, color: C.textDim }}>{hiveId} · {approved.length} member{approved.length === 1 ? "" : "s"}</div>
+          <div style={{ fontFamily: FACE_MONO, fontSize: 13, color: C.accent, marginTop: 4 }}>Hive-Key: {hiveCfg.key}</div>
         </div>
-        <span style={{ fontSize: 11, color: C.accent, ...ENGRAVE, letterSpacing: "0.1em" }}>live</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
+          <span style={{ fontSize: 11, color: C.accent, ...ENGRAVE, letterSpacing: "0.1em" }}>live</span>
+          <button onClick={() => { if (window.confirm("Destroy Hive? All posts and members will be lost.")) destroyHive(); }} style={{ background: "transparent", color: C.danger, fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, padding: "6px 12px", ...ENGRAVE, letterSpacing: "0.06em" }}>Destroy Hive</button>
+        </div>
       </div>
 
       {pending.length > 0 && (
