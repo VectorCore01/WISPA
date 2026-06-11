@@ -84,48 +84,7 @@ const T = {
     ru: "Я безопасно записал свои 24 слова и понимаю, что их невозможно восстановить.",
     uk: "Я безпечно записав свої 24 слова та розумію, що їх неможливо відновити.",
   },
-  "Create my WISP button": {
-    en: "Create my WISP",
-    ar: "إنشاء WISP",
-    de: "WISP erstellen",
-    es: "Crear mi WISP",
-    fr: "Créer mon WISP",
-    it: "Crea il mio WISP",
-    ko: "WISP 생성",
-    ms: "Cipta WISP saya",
-    nl: "Maak mijn WISP",
-    pt: "Criar meu WISP",
-    ru: "Создать WISP",
-    uk: "Створити WISP",
-  },
-  "Log in with your 24 words": {
-    en: "Log in with your 24 words",
-    ar: "تسجيل الدخول بكلماتك الـ24",
-    de: "Mit deinen 24 Wörtern anmelden",
-    es: "Inicia sesión con tus 24 palabras",
-    fr: "Connectez-vous avec vos 24 mots",
-    it: "Accedi con le tue 24 parole",
-    ko: "24개의 단어로 로그인",
-    ms: "Log masuk dengan 24 patah kata anda",
-    nl: "Log in met uw 24 woorden",
-    pt: "Entre com suas 24 palavras",
-    ru: "Войдите с помощью своих 24 слов",
-    uk: "Увійдіть за допомогою своїх 24 слів",
-  },
-  "Paste or type your 24 words to restore your WISP.": {
-    en: "Paste or type your 24 words to restore your WISP.",
-    ar: "الصق أو اكتب كلماتك الـ24 لاستعادة WISP.",
-    de: "Füge deine 24 Wörter ein oder tippe sie, um deinen WISP wiederherzustellen.",
-    es: "Pega o escribe tus 24 palabras para restaurar tu WISP.",
-    fr: "Collez ou tapez vos 24 mots pour restaurer votre WISP.",
-    it: "Incolla o digita le tue 24 parole per ripristinare il tuo WISP.",
-    ko: "24개의 단어를 붙여넣거나 입력하여 WISP를 복원하세요.",
-    ms: "Tampal atau taip 24 patah kata anda untuk memulihkan WISP anda.",
-    nl: "Plak of typ uw 24 woorden om uw WISP te herstellen.",
-    pt: "Cole ou digite suas 24 palavras para restaurar seu WISP.",
-    ru: "Вставьте или введите свои 24 слова, чтобы восстановить WISP.",
-    uk: "Вставте або введіть свої 24 слова, щоб відновити WISP.",
-  },
+
   Restore: {
     en: "Restore WISP",
     ar: "استعادة WISP",
@@ -154,20 +113,7 @@ const T = {
     ru: "Ожидалось 24 слова, получено",
     uk: "Очікувалося 24 слів, отримано",
   },
-  "Welcome. Your anonymous WISP is ready.": {
-    en: "Welcome. Your anonymous WISP is ready.",
-    ar: "مرحبًا. WISP المجهول الخاص بك جاهز.",
-    de: "Willkommen. Dein anonymer WISP ist bereit.",
-    es: "Bienvenido. Tu WISP anónimo está listo.",
-    fr: "Bienvenue. Votre WISP anonyme est prêt.",
-    it: "Benvenuto. Il tuo WISP anonimo è pronto.",
-    ko: "환영합니다. 익명 WISP가 준비되었습니다.",
-    ms: "Selamat datang. WISP tanpa nama anda sudah sedia.",
-    nl: "Welkom. Uw anonieme WISP is klaar.",
-    pt: "Bem-vindo. Seu WISP anônimo está pronto.",
-    ru: "Добро пожаловать. Ваш анонимный WISP готов.",
-    uk: "Ласкаво просимо. Ваш анонімний WISP готов.",
-  },
+
   "WISP restored. Welcome back.": {
     en: "WISP restored. Welcome back.",
     ar: "تمت استعادة WISP. مرحبًا بعودتك.",
@@ -186,31 +132,13 @@ const T = {
     en: "Set up your identity",
     de: "Richte dein Profil ein",
   },
-  "Choose a name to chat under and a password. Others can only open a cell with you if they know your id and this password.": {
-    en: "Choose a name to chat under and a password. Others can only open a cell with you if they know your id and this password.",
-    de: "Wähle einen Namen, unter dem du chattest, und ein Kennwort. Andere können nur dann eine Zelle mit dir öffnen, wenn sie deine ID und dieses Kennwort kennen.",
-  },
+
   "Create a Wisp": {
     en: "Create a Wisp", de: "Wisp erstellen",
   },
-  "Start free as a BEE. Log in with your 24 words if you're already a WISP.": {
-    en: "Start free as a BEE. Log in with your 24 words if you're already a WISP.",
-    de: "Starte gratis als BEE. Melde dich mit deinen 24 Wörtern an, wenn du bereits ein WISP bist.",
-  },
-  "Your free BEE is ready. It fades if you stay quiet.": {
-    en: "Your free BEE is ready. It fades if you stay quiet.",
-    de: "Deine gratis BEE ist bereit. Sie verschwindet, wenn du still bleibst.",
-  },
-  "You're a WISP now. Permanent — and you can run a Hive.": {
-    en: "You're a WISP now. Permanent — and you can run a Hive.",
-    de: "Du bist jetzt ein WISP. Dauerhaft — und du kannst einen Hive betreiben.",
-  },
+
   "Hive channel created.": {
     en: "Hive channel created.", de: "Hive-Channel erstellt.",
-  },
-  "Only a WISP can change its name.": {
-    en: "Only a WISP can change its name.",
-    de: "Nur ein WISP kann seinen Namen ändern.",
   },
   "Name updated.": {
     en: "Name updated.", de: "Name aktualisiert.",
@@ -223,18 +151,7 @@ const T = {
     en: "the name people see",
     de: "der Name, den andere sehen",
   },
-  "Your password": {
-    en: "Your password",
-    de: "Dein Kennwort",
-  },
-  "others need this to reach you": {
-    en: "others need this to reach you",
-    de: "andere brauchen das, um dich zu erreichen",
-  },
-  "Share this password only with people you actually want to hear from.": {
-    en: "Share this password only with people you actually want to hear from.",
-    de: "Teile dieses Kennwort nur mit Personen, von denen du wirklich hören möchtest.",
-  },
+
   Continue: {
     en: "Continue",
     de: "Weiter",
@@ -251,10 +168,7 @@ const T = {
     en: "No WISP found with that id.",
     de: "Kein WISP mit dieser ID gefunden.",
   },
-  "Wrong password — you can't open a cell with them.": {
-    en: "Wrong password — you can't open a cell with them.",
-    de: "Falsches Kennwort — du kannst keine Zelle mit ihnen öffnen.",
-  },
+
   "Wrong message key — you can't open a cell with them.": {
     en: "Wrong message key — you can't open a cell with them.",
     de: "Falscher Nachrichten-Key — du kannst keine Zelle mit ihnen öffnen.",
