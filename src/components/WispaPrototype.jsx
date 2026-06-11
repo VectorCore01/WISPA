@@ -1,6 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { THEMES, FACE_UI, honeycombBg } from "../lib/theme.js";
-import { genSeed, genWispId, genMsgKey, rand6, capPerSender, CELL_MSG_PER_SENDER, nowTime, seedCells, seedHiveMembers, lookupPeer } from "../lib/helpers.js";
+import { genSeed, genWispId, genMsgKey } from "../lib/id.js";
+import { capPerSender, CELL_MSG_PER_SENDER } from "../lib/cell.js";
+import { nowTime } from "../lib/time.js";
+import { seedCells, seedHiveMembers } from "../lib/seed.js";
+import { lookupPeer } from "../lib/directory.js";
+import { loadSession, saveSession } from "../lib/session.js";
 import { t } from "../lib/translations.js";
 import { api, normCell } from "../lib/api.js";
 import Landing from "./Landing.jsx";
@@ -10,19 +15,6 @@ import Profile from "./Profile.jsx";
 import Onboard from "./Onboard.jsx";
 import Login from "./Login.jsx";
 import AppShell from "./AppShell.jsx";
-
-const SAVE_KEY = "wispa_session";
-
-function loadSession() {
-  try {
-    const raw = sessionStorage.getItem(SAVE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch { return {}; }
-}
-
-function saveSession(data) {
-  try { sessionStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch {}
-}
 
 export default function WispaPrototype() {
   const saved = loadSession();
@@ -189,7 +181,6 @@ export default function WispaPrototype() {
 
   function sendInCell(cellId, msg) {
     const entry = { id: ++msgIdRef.current, from: "me", kind: "text", time: nowTime(), opened: false, ...msg };
-    // Optimistic local update — the server also stores messages
     api.sendMessage(cellId, entry.kind, entry.text || entry.content || "").catch(() => {});
     setCells((cs) => cs.map((c) => {
       if (c.id !== cellId) return c;
@@ -264,7 +255,6 @@ export default function WispaPrototype() {
     } catch {}
   }
 
-  // Seed data for demo when no server
   function useSeedFallback() {
     if (!cells.length && !wispId) {
       setCells(seedCells());
