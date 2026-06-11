@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FACE_MONO } from "../lib/theme.js";
 
 // --- expression evaluator (recursive descent) ---
@@ -119,6 +119,57 @@ function needsParenBefore(expr) {
 export default function Landing({ C, lang, onStart }) {
   const [display, setDisplay] = useState("0");
   const [result, setResult] = useState(null);
+
+  const refs = useRef({ display, result });
+  refs.current.display = display;
+  refs.current.result = result;
+
+  useEffect(() => {
+    const fn = (e) => {
+      const d = refs.current.display;
+      const r = refs.current.result;
+      const s = (v) => { setDisplay(v); };
+      const sr = (v) => { setResult(v); };
+      const o = (op) => {
+        if (r !== null) { s(String(r) + op); sr(null); return; }
+        const last = d.slice(-1);
+        s("+-×÷^".indexOf(last) !== -1 ? d.slice(0, -1) + op : d + op);
+      };
+      if (/^[0-9]$/.test(e.key)) { s(r !== null ? e.key : (d === "0" ? e.key : d + e.key)); if (r !== null) sr(null); return; }
+      if (e.key === ".") {
+        if (r !== null) { s("0."); sr(null); return; }
+        const parts = d.split(/[+\-×÷^()]/);
+        if (!parts[parts.length - 1].includes(".")) s(d + ".");
+        return;
+      }
+      if (e.key === "+") { o("+"); return; }
+      if (e.key === "-") { o("-"); return; }
+      if (e.key === "*") { o("×"); return; }
+      if (e.key === "/") { e.preventDefault(); o("÷"); return; }
+      if (e.key === "^") { o("^"); return; }
+      if (e.key === "(") {
+        if (r !== null) { s("("); sr(null); return; }
+        const p = d.length && /[0-9.)πe]/.test(d[d.length - 1]);
+        s(p ? d + "×(" : d + "(");
+        return;
+      }
+      if (e.key === ")") { s(d + ")"); return; }
+      if (e.key === "Enter" || e.key === "=") {
+        const v = evalExpr(d);
+        s(String(v));
+        sr(v);
+        return;
+      }
+      if (e.key === "Backspace") {
+        if (r !== null) { s("0"); sr(null); return; }
+        s(d.length > 1 ? d.slice(0, -1) : "0");
+        return;
+      }
+      if (e.key === "Escape" || e.key === "Delete") { s("0"); sr(null); }
+    };
+    window.addEventListener("keydown", fn);
+    return () => window.removeEventListener("keydown", fn);
+  }, []);
 
   const input = (val) => {
     if (result !== null) { setDisplay(val); setResult(null); return; }
