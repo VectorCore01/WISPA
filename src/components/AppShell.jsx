@@ -10,7 +10,7 @@ export default function AppShell(props) {
   return (
     <div style={{ maxWidth: 760, margin: "0 auto", paddingBottom: 90 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 22px", borderBottom: `1px solid ${C.line}`, position: "sticky", top: 0, background: C.bg, zIndex: 10 }}>
-        <button onClick={() => setScreen("wisp-landing")} aria-label="Back to home" style={{ display: "flex", alignItems: "center", gap: 10, background: "transparent", padding: 0 }}>
+        <button onClick={() => setTab("cells")} aria-label="Cells" style={{ display: "flex", alignItems: "center", gap: 10, background: "transparent", padding: 0 }}>
           <WaspLock size={28} C={C} />
           <span style={{ fontFamily: FACE_MONO, color: C.text, fontSize: 17, fontWeight: 700, letterSpacing: "0.3em" }}>WISPA</span>
         </button>
@@ -27,11 +27,23 @@ export default function AppShell(props) {
         {tab === "account" && <AccountTab {...props} />}
       </div>
 
-      <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, display: "flex", justifyContent: "center", background: C.surface, borderTop: `1px solid ${C.line}`, padding: "10px 8px" }}>
+      <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, display: "flex", justifyContent: "center", background: C.surface, borderTop: `1px solid ${C.line}`, padding: "8px 8px" }}>
         <div style={{ display: "flex", maxWidth: 760, width: "100%", justifyContent: "space-around" }}>
-          {tabs.map(([id, label]) => (
-            <button key={id} onClick={() => setTab(id)} style={{ background: "transparent", color: tab === id ? C.text : C.textDim, fontSize: 11, ...ENGRAVE, letterSpacing: "0.1em", padding: "8px 14px", borderBottom: tab === id ? `2px solid ${C.accent}` : "2px solid transparent" }}>{label}</button>
-          ))}
+          {tabs.map(([id, label]) => {
+            const active = tab === id;
+            return (
+              <button key={id} onClick={() => setTab(id)} style={{
+                background: active ? C.accent + "15" : "transparent",
+                color: active ? C.accent : C.textDim,
+                fontSize: 13, fontWeight: active ? 700 : 500,
+                letterSpacing: "0.08em",
+                padding: "10px 22px",
+                borderRadius: 8,
+                border: active ? `1.5px solid ${C.accent}40` : "1.5px solid transparent",
+                transition: "all 0.15s",
+              }}>{label}</button>
+            );
+          })}
         </div>
       </nav>
     </div>
