@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { THEMES, FACE_UI, honeycombBg } from "../lib/theme.js";
 import { genSeed, genWispId, genMsgKey, rand6, capPerSender, CELL_MSG_PER_SENDER, nowTime, seedCells, seedHiveMembers, lookupPeer } from "../lib/helpers.js";
 import { t } from "../lib/translations.js";
@@ -11,29 +11,50 @@ import Onboard from "./Onboard.jsx";
 import Login from "./Login.jsx";
 import AppShell from "./AppShell.jsx";
 
+const SAVE_KEY = "wispa_session";
+
+function loadSession() {
+  try {
+    const raw = sessionStorage.getItem(SAVE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+function saveSession(data) {
+  try { sessionStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch {}
+}
+
 export default function WispaPrototype() {
+  const saved = loadSession();
+
   const [mode] = useState("dark");
   const C = THEMES[mode];
 
   const [lang, setLang] = useState("en");
-  const [screen, setScreen] = useState("landing");
-  const [tier, setTier] = useState("wisp");
+  const [screen, setScreen] = useState(saved.screen && saved.screen !== "landing" ? saved.screen : "landing");
+  const [tier, setTier] = useState(saved.tier || "wisp");
   const [seed, setSeed] = useState([]);
   const [seedConfirmed, setSeedConfirmed] = useState(false);
-  const [wispId, setWispId] = useState("");
-  const [hiveId, setHiveId] = useState("");
-  const [msgKey, setMsgKey] = useState("");
-  const [username, setUsername] = useState("");
+  const [wispId, setWispId] = useState(saved.wispId || "");
+  const [hiveId, setHiveId] = useState(saved.hiveId || "");
+  const [msgKey, setMsgKey] = useState(saved.msgKey || "");
+  const [username, setUsername] = useState(saved.username || "");
   const [loginPass, setLoginPass] = useState("");
-  const [tab, setTab] = useState("cells");
+  const [tab, setTab] = useState(saved.tab || "cells");
   const [toast, setToast] = useState(null);
   const [cells, setCells] = useState([]);
   const [activeCell, setActiveCell] = useState(null);
   const msgIdRef = useRef(Date.now());
-  const [hiveCfg, setHiveCfg] = useState(null);
+  const [hiveCfg, setHiveCfg] = useState(saved.hiveCfg || null);
   const [hiveMembers, setHiveMembers] = useState([]);
   const [hivePosts, setHivePosts] = useState([]);
   const isPro = tier === "pro";
+  const mounted = useRef(false);
+
+  useEffect(() => {
+    if (!mounted.current) { mounted.current = true; return; }
+    saveSession({ screen, tier, wispId, hiveId, msgKey, username, tab, hiveCfg });
+  }, [screen, tier, wispId, hiveId, msgKey, username, tab, hiveCfg]);
 
   function notify(msg) { setToast(msg); setTimeout(() => setToast(null), 2600); }
 
@@ -285,7 +306,7 @@ export default function WispaPrototype() {
       )}
 
       {screen === "landing" && <Landing C={C} lang={lang} onStart={() => setScreen("wisp-landing")} />}
-      {screen === "wisp-landing" && <WispLanding C={C} lang={lang} onStart={() => setScreen("choice")} onLight={() => setScreen("landing")} />}
+      {screen === "wisp-landing" && <WispLanding C={C} onStart={() => setScreen("choice")} onLight={() => setScreen("landing")} />}
       {screen === "choice" && <EntryChoice C={C} lang={lang} setLang={setLang} onCreate={startProfile} onLogin={startLogin} onBack={() => setScreen("wisp-landing")} />}
       {screen === "profile" && <Profile C={C} lang={lang} username={username} setUsername={setUsername} loginPass={loginPass} setLoginPass={setLoginPass} onContinue={finishFreeWisp} onBack={() => setScreen("choice")} />}
       {screen === "onboard" && <Onboard C={C} lang={lang} seed={seed} confirmed={seedConfirmed} setConfirmed={setSeedConfirmed} onFinish={finishUpgrade} onBack={() => setScreen("app")} />}
