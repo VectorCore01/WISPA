@@ -1,36 +1,31 @@
 import { useState } from "react";
 import { FACE_MONO } from "../lib/theme.js";
 
-export default function Landing({ C, lang, onStart }) {
-  const [display, setDisplay] = useState("0");
-  const [prev, setPrev] = useState(null);
-  const [op, setOp] = useState(null);
-  const [resetNext, setResetNext] = useState(false);
-
-  const input = (val) => {
-    if (resetNext) {
-      setDisplay(val);
-      setResetNext(false);
-    } else {
-      setDisplay(display === "0" ? val : display + val);
+function tokenize(expr) {
+  const tokens = [];
+  let num = "";
+  for (const ch of expr) {
+    if ("0123456789.".indexOf(ch) !== -1) {
+      num += ch;
+    } else if ("+-*/".indexOf(ch) !== -1) {
+      if (num) tokens.push(parseFloat(num));
+      tokens.push(ch);
+      num = "";
+    } else if ("×÷".indexOf(ch) !== -1) {
+      if (num) tokens.push(parseFloat(num));
+      tokens.push(ch === "×" ? "*" : "/");
+      num = "";
     }
-  };
+  }
+  if (num) tokens.push(parseFloat(num));
+  return tokens;
+}
 
-  const operate = (next) => {
-    const cur = parseFloat(display);
-    if (op && prev !== null) {
-      const r = calc(prev, cur, op);
-      setDisplay(String(r));
-      setPrev(r);
-    } else {
-      setPrev(cur);
-    }
-    setOp(next);
-    setResetNext(true);
-  };
-
-  const calc = (a, b, operator) => {
-    switch (operator) {
+function evaluate(tokens) {
+  if (tokens.length === 0) return 0;
+  let i = 0;
+  const applyOp = (a, op, b) => {
+    switch (op) {
       case "+": return a + b;
       case "-": return a - b;
       case "*": return a * b;
@@ -38,27 +33,72 @@ export default function Landing({ C, lang, onStart }) {
       default: return b;
     }
   };
+  const multDiv = () => {
+    let a = tokens[i++];
+    while (i < tokens.length) {
+      const op = tokens[i];
+      if (op !== "*" && op !== "/") break;
+      i++;
+      const b = tokens[i++];
+      a = applyOp(a, op, b);
+    }
+    return a;
+  };
+  let result = multDiv();
+  while (i < tokens.length) {
+    const op = tokens[i++];
+    const b = multDiv();
+    result = applyOp(result, op, b);
+  }
+  return result;
+}
 
-  const equals = () => {
-    const cur = parseFloat(display);
-    if (op && prev !== null) {
-      const r = calc(prev, cur, op);
-      setDisplay(String(r));
-      setPrev(null);
-      setOp(null);
-      setResetNext(true);
+export default function Landing({ C, lang, onStart }) {
+  const [display, setDisplay] = useState("0");
+  const [result, setResult] = useState(null);
+
+  const input = (val) => {
+    if (result !== null) {
+      setDisplay(val);
+      setResult(null);
+    } else {
+      setDisplay(display === "0" ? val : display + val);
     }
   };
 
-  const clear = () => {
+  const operate = (op) => {
+    if (result !== null) {
+      setDisplay(String(result) + op);
+      setResult(null);
+    } else if ("×÷+-".indexOf(display.slice(-1)) !== -1) {
+      setDisplay(display.slice(0, -1) + op);
+    } else {
+      setDisplay(display + op);
+    }
+  };
+
+  const equals = () => {
+    const tokens = tokenize(display);
+    if (tokens.length < 2) return;
+    const val = evaluate(tokens);
+    setDisplay(String(val));
+    setResult(val);
+  };
+
+  const allClear = () => {
     setDisplay("0");
-    setPrev(null);
-    setOp(null);
-    setResetNext(false);
+    setResult(null);
   };
 
   const backspace = () => {
+    if (result !== null) { allClear(); return; }
     setDisplay(display.length > 1 ? display.slice(0, -1) : "0");
+  };
+
+  const addDot = () => {
+    if (result !== null) { setDisplay("0."); setResult(null); return; }
+    const parts = display.split(/[+\-×÷]/);
+    if (!parts[parts.length - 1].includes(".")) setDisplay(display + ".");
   };
 
   const B = ({ label, action, light, blue, style: extra }) => (
@@ -147,26 +187,28 @@ export default function Landing({ C, lang, onStart }) {
           padding: "16px 20px",
           marginBottom: 20,
           textAlign: "right",
-          fontSize: 32,
+          fontSize: 28,
           fontWeight: 700,
           color: "#1A1A1A",
           fontFamily: FACE_MONO,
-          minHeight: 48,
+          minHeight: 56,
           letterSpacing: "0.02em",
           overflow: "hidden",
+          wordBreak: "break-all",
+          lineHeight: 1.3,
         }}>
           {display}
         </div>
 
         <div style={grid}>
-          <B label="C" action={clear} light />
-          <B label="÷" action={() => operate("/")} light />
-          <B label="×" action={() => operate("*")} light />
+          <B label="C" action={allClear} light />
+          <B label="÷" action={() => operate("÷")} light />
+          <B label="×" action={() => operate("×")} light />
           <B label="⌫" action={backspace} light />
           <B label="7" action={() => input("7")} />
           <B label="8" action={() => input("8")} />
           <B label="9" action={() => input("9")} />
-          <B label="−" action={() => operate("-")} light />
+          <B label="-" action={() => operate("-")} light />
           <B label="4" action={() => input("4")} />
           <B label="5" action={() => input("5")} />
           <B label="6" action={() => input("6")} />
@@ -176,7 +218,7 @@ export default function Landing({ C, lang, onStart }) {
           <B label="3" action={() => input("3")} />
           <B label="=" action={equals} blue />
           <B label="0" action={() => input("0")} style={{ aspectRatio: "auto", gridColumn: "span 2" }} />
-          <B label="." action={() => !display.includes(".") && input(".")} />
+          <B label="." action={addDot} />
         </div>
       </div>
 
