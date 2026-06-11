@@ -156,31 +156,74 @@ function needsMul(expr) {
   return expr.length > 0 && /[0-9.)πe!]/.test(expr[expr.length - 1]);
 }
 
-function fmtDisplay(s) {
-  if (!s.includes("^")) return s;
+// --- display formatter ---
+
+function fmtDisplay(s, showFrac) {
+  if (showFrac && /^-?\d+\/\d+$/.test(s)) {
+    const [n, d] = s.split("/");
+    return (
+      <span style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", verticalAlign: "middle", lineHeight: 1.1 }}>
+        <span>{n}</span>
+        <span style={{ borderTop: "2px solid #1A1A1A", paddingTop: 2, marginTop: 1 }}>{d}</span>
+      </span>
+    );
+  }
+  if (!s.includes("^") && !s.includes("√")) return s;
+
   const out = [];
   let i = 0;
+  let key = 0;
+
+  const flushPlain = (end) => {
+    if (end > i) out.push(s.slice(i, end));
+    i = end;
+  };
+
   while (i < s.length) {
-    const idx = s.indexOf("^", i);
-    if (idx === -1) { out.push(s.slice(i)); break; }
-    if (idx > i) out.push(s.slice(i, idx));
-    const rest = s.slice(idx + 1);
-    const md = rest.match(/^(\d+)/);
-    if (md) {
-      out.push(<sup key={idx}>{md[1]}</sup>);
-      i = idx + 1 + md[1].length;
-    } else if (rest[0] === "(") {
+    const hat = s.indexOf("^", i);
+    const root = s.indexOf("√(", i);
+    let next = -1;
+    if (hat !== -1 && (next === -1 || hat < next)) next = hat;
+    if (root !== -1 && (next === -1 || root < next)) next = root;
+
+    if (next === -1) { flushPlain(s.length); break; }
+
+    if (next === hat) {
+      flushPlain(hat);
+      const rest = s.slice(hat + 1);
+      const md = rest.match(/^(\d+)/);
+      if (md) {
+        out.push(<sup key={key++} style={{ fontSize: "0.65em", verticalAlign: "super", lineHeight: 1 }}>{md[1]}</sup>);
+        i = hat + 1 + md[1].length;
+      } else if (rest[0] === "(") {
+        let d = 0, j = 0;
+        for (; j < rest.length; j++) {
+          if (rest[j] === "(") d++;
+          if (rest[j] === ")") d--;
+          if (d === 0) { j++; break; }
+        }
+        out.push(<sup key={key++} style={{ fontSize: "0.65em", verticalAlign: "super", lineHeight: 1 }}>{rest.slice(0, j)}</sup>);
+        i = hat + 1 + j;
+      } else {
+        out.push("^");
+        i = hat + 1;
+      }
+    } else {
+      flushPlain(root);
+      const rest = s.slice(root + 2);
       let d = 0, j = 0;
       for (; j < rest.length; j++) {
         if (rest[j] === "(") d++;
         if (rest[j] === ")") d--;
         if (d === 0) { j++; break; }
       }
-      out.push(<sup key={idx}>{rest.slice(0, j)}</sup>);
-      i = idx + 1 + j;
-    } else {
-      out.push("^");
-      i = idx + 1;
+      out.push(
+        <span key={key++} style={{ display: "inline-flex", alignItems: "center", verticalAlign: "middle" }}>
+          <span style={{ fontSize: "1.4em", lineHeight: 1 }}>√</span>
+          <span style={{ borderTop: "2px solid #1A1A1A", padding: "0 4px", marginLeft: 2 }}>{rest.slice(0, j - 1)}</span>
+        </span>
+      );
+      i = root + 2 + j;
     }
   }
   return out.length ? out : s;
@@ -222,11 +265,13 @@ export default function Landing({ C, lang, onStart }) {
   const [result, setResult] = useState(null);
   const [mode2, setMode2] = useState(false);
   const [deg, setDeg] = useState(true);
+  const [showFrac, setShowFrac] = useState(false);
 
-  const refs = useRef({ display, result, deg });
+  const refs = useRef({ display, result, deg, showFrac });
   refs.current.display = display;
   refs.current.result = result;
   refs.current.deg = deg;
+  refs.current.showFrac = showFrac;
 
   useEffect(() => {
     const fn = (e) => {
@@ -236,13 +281,13 @@ export default function Landing({ C, lang, onStart }) {
       const s = (v) => setDisplay(v);
       const sr = (v) => setResult(v);
       const op = (ch) => {
-        if (r !== null) { s(String(r) + ch); sr(null); return; }
+        if (r !== null) { s(String(r) + ch); sr(null); setShowFrac(false); return; }
         const last = d.slice(-1);
         s("+-×÷^".indexOf(last) !== -1 ? d.slice(0, -1) + ch : d + ch);
       };
       if (/^[0-9]$/.test(e.key)) {
         if (r !== null) { s(e.key); sr(null); } else { s(d === "0" ? e.key : d + e.key); }
-        return;
+        setShowFrac(false); return;
       }
       if (e.key === ".") {
         if (r !== null) { s("0."); sr(null); return; }
@@ -264,7 +309,7 @@ export default function Landing({ C, lang, onStart }) {
       if (e.key === "Enter" || e.key === "=") {
         const v = evalExpr(d, de);
         s(String(v));
-        sr(v); return;
+        sr(v); setShowFrac(false); return;
       }
       if (e.key === "Backspace") {
         if (r !== null) { s("0"); sr(null); return; }
@@ -277,14 +322,16 @@ export default function Landing({ C, lang, onStart }) {
   }, []);
 
   const input = (val) => {
-    if (result !== null) { setDisplay(val); setResult(null); return; }
+    if (result !== null) { setDisplay(val); setResult(null); setShowFrac(false); return; }
     setDisplay(display === "0" ? val : display + val);
+    setShowFrac(false);
   };
 
   const operate = (ch) => {
-    if (result !== null) { setDisplay(String(result) + ch); setResult(null); return; }
+    if (result !== null) { setDisplay(String(result) + ch); setResult(null); setShowFrac(false); return; }
     const last = display.slice(-1);
     setDisplay("+-×÷^".indexOf(last) !== -1 ? display.slice(0, -1) + ch : display + ch);
+    setShowFrac(false);
   };
 
   const openParen = () => {
@@ -293,56 +340,67 @@ export default function Landing({ C, lang, onStart }) {
   };
   const closeParen = () => { setDisplay(display + ")"); };
 
-  const fnInsert = (name, label) => {
+  const fnInsert = (name) => {
     const ex = name + "(";
-    if (result !== null) { setDisplay(ex); setResult(null); return; }
+    if (result !== null) { setDisplay(ex); setResult(null); setShowFrac(false); return; }
     setDisplay(needsMul(display) ? display + "×" + ex : display + ex);
+    setShowFrac(false);
   };
 
   const insertConst = (label) => {
-    if (result !== null) { setDisplay(label); setResult(null); return; }
+    if (result !== null) { setDisplay(label); setResult(null); setShowFrac(false); return; }
     setDisplay(needsMul(display) ? display + "×" + label : display + label);
+    setShowFrac(false);
   };
 
   const power2 = () => {
-    if (result !== null) { setDisplay(String(result) + "^2"); setResult(null); return; }
+    if (result !== null) { setDisplay(String(result) + "^2"); setResult(null); setShowFrac(false); return; }
     setDisplay(needsMul(display) ? display + "^2" : display + "^2");
+    setShowFrac(false);
   };
   const power3 = () => {
-    if (result !== null) { setDisplay(String(result) + "^3"); setResult(null); return; }
+    if (result !== null) { setDisplay(String(result) + "^3"); setResult(null); setShowFrac(false); return; }
     setDisplay(needsMul(display) ? display + "^3" : display + "^3");
+    setShowFrac(false);
   };
 
   const doFactorial = () => {
-    if (result !== null) { setDisplay(String(result) + "!"); setResult(null); return; }
+    if (result !== null) { setDisplay(String(result) + "!"); setResult(null); setShowFrac(false); return; }
     setDisplay(needsMul(display) ? display + "!" : display + "!");
+    setShowFrac(false);
   };
 
   const insertMod = () => { operate("mod"); };
-
   const insertRand = () => {
     setDisplay(needsMul(display) ? display + "×rand" : display + "rand");
+    setShowFrac(false);
   };
 
-  const toggleDR = () => {
-    setDeg(!deg);
-    setDisplay(display);
-  };
+  const toggleDR = () => { setDeg(!deg); };
 
   const equals = () => {
     const v = evalExpr(display, deg);
     setDisplay(String(v));
     setResult(v);
+    setShowFrac(false);
   };
 
   const toggleFD = () => {
     if (result !== null && Number.isFinite(result) && result !== "Error") {
-      const f = toFraction(result, 1000);
-      if (f && f.d !== 1) setDisplay(f.n + "/" + f.d);
+      if (showFrac) {
+        setDisplay(String(result));
+        setShowFrac(false);
+      } else {
+        const f = toFraction(result, 1000);
+        if (f && f.d !== 1) {
+          setDisplay(f.n + "/" + f.d);
+          setShowFrac(true);
+        }
+      }
     }
   };
 
-  const allClear = () => { setDisplay("0"); setResult(null); };
+  const allClear = () => { setDisplay("0"); setResult(null); setShowFrac(false); };
   const backspace = () => {
     if (result !== null) { allClear(); return; }
     setDisplay(display.length > 1 ? display.slice(0, -1) : "0");
@@ -407,6 +465,8 @@ export default function Landing({ C, lang, onStart }) {
     </div>
   );
 
+  const fracLabel = showFrac ? "→Dec" : "→Frac";
+
   return (
     <div style={{
       minHeight: "100vh", background: "#FFFFFF",
@@ -441,10 +501,10 @@ export default function Landing({ C, lang, onStart }) {
         <div style={{
           background: "#F5F5F5", borderRadius: 12, padding: "12px 14px",
           marginBottom: 12, textAlign: "right", fontSize: 22, fontWeight: 700,
-          color: "#1A1A1A", fontFamily: FACE_MONO, minHeight: 40,
-          letterSpacing: "0.02em", overflow: "hidden", wordBreak: "break-all", lineHeight: 1.3,
+          color: "#1A1A1A", fontFamily: FACE_MONO, minHeight: 44,
+          letterSpacing: "0.02em", overflow: "hidden", wordBreak: "break-all", lineHeight: 1.4,
         }}>
-          {fmtDisplay(display)}
+          {fmtDisplay(display, showFrac)}
         </div>
 
         {row(mode2 ? ROW1_2ND : ROW1_NORM)}
@@ -473,7 +533,7 @@ export default function Landing({ C, lang, onStart }) {
           <B label="=" action={equals} blue />
           <B label="0" action={() => input("0")} style={{ aspectRatio: "auto", gridColumn: "span 2" }} />
           <B label="." action={addDot} s={18} />
-          <B label="F↔D" action={toggleFD} s={10} light />
+          <B label={fracLabel} action={toggleFD} s={10} light />
         </div>
       </div>
 
