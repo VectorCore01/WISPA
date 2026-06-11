@@ -15,14 +15,14 @@ export default function WispaPrototype() {
 
   const [lang, setLang] = useState("en");
   const [screen, setScreen] = useState("landing");
-  const [tier, setTier] = useState("wisp"); // "wisp" | "pro"
+  const [tier, setTier] = useState("wisp");
   const [seed, setSeed] = useState([]);
   const [seedConfirmed, setSeedConfirmed] = useState(false);
   const [wispId, setWispId] = useState("");
   const [hiveId, setHiveId] = useState("");
-  const [msgKey, setMsgKey] = useState("");      // 6-digit code others type to reach you
+  const [msgKey, setMsgKey] = useState("");
   const [username, setUsername] = useState("");
-  const [loginPass, setLoginPass] = useState(""); // free WISP logs in with id + this password
+  const [loginPass, setLoginPass] = useState("");
   const [tab, setTab] = useState("cells");
   const [toast, setToast] = useState(null);
 
@@ -31,7 +31,7 @@ export default function WispaPrototype() {
 
   const msgIdRef = useRef(Date.now());
 
-  const [hiveCfg, setHiveCfg] = useState(null); // { name, key } once the channel is created
+  const [hiveCfg, setHiveCfg] = useState(null);
   const [hiveMembers, setHiveMembers] = useState([]);
   const [hivePosts, setHivePosts] = useState([]);
 
@@ -42,8 +42,6 @@ export default function WispaPrototype() {
   function startProfile() { setUsername(""); setLoginPass(""); setScreen("profile"); }
   function startLogin() { setScreen("login"); }
 
-  // Free signup → a WISP. Logs back in with id + the password chosen here.
-  // No 24 words. Cells roll max 4 messages (2 per person).
   function finishFreeWisp() {
     setTier("wisp");
     setWispId(genWispId());
@@ -59,8 +57,6 @@ export default function WispaPrototype() {
     notify(t(lang, "Your free WISP is ready."));
   }
 
-  // Upgrade flow: pay €4.99 → generate 24 words → become WISP Pro.
-  // Keeps the same WISP id and message key.
   function startUpgrade() { setSeed(genSeed()); setSeedConfirmed(false); setScreen("onboard"); }
   function finishUpgrade() {
     setTier("pro");
@@ -71,7 +67,6 @@ export default function WispaPrototype() {
     notify(t(lang, "You're WISP Pro now. Videos, files and your own Hive are unlocked."));
   }
 
-  // Restore: Pro logs in with id + 24 words, free WISP with id + password.
   function finishLogin(id, restoredTier) {
     setTier(restoredTier);
     setWispId(id);
@@ -120,15 +115,11 @@ export default function WispaPrototype() {
     notify("Hive destroyed. You can create a new one anytime.");
   }
 
-  // msg is either { text } or an attachment { kind, name, size, url }.
-  // Attachments start sealed (opened: false) and must be opened to be seen.
-  // Rolling window: max 4 messages (2 per sender) — oldest drops off.
   function sendInCell(cellId, msg) {
     const entry = { id: ++msgIdRef.current, from: "me", kind: "text", time: nowTime(), opened: false, ...msg };
     setCells((cs) => cs.map((c) => {
       if (c.id !== cellId) return c;
-      const updated = [...c.messages, entry];
-      return { ...c, lastActivity: Date.now(), seen: true, messages: capPerSender(updated, CELL_MSG_PER_SENDER) };
+      return { ...c, lastActivity: Date.now(), seen: true, messages: capPerSender([...c.messages, entry], CELL_MSG_PER_SENDER) };
     }));
   }
 
@@ -146,8 +137,6 @@ export default function WispaPrototype() {
   }
 
   function startNewCell(peer, key) {
-    // You can only open a cell if you know their WISP id AND their 6-digit
-    // message key. Otherwise the cell is refused.
     const res = lookupPeer(peer, key);
     if (!res.ok) {
       notify(res.reason === "unknown"
@@ -162,15 +151,12 @@ export default function WispaPrototype() {
       return true;
     }
     const id = Date.now();
-    // authed: true — you typed their key to open this cell.
     setCells((cs) => [{ id, peer, peerName: res.name, authed: true, lastActivity: Date.now(), messages: [], seen: true }, ...cs]);
     setActiveCell(id);
     setTab("cells");
     return true;
   }
 
-  // To reply in an incoming cell you must enter the peer's 6-digit key first —
-  // the same way they had to enter yours to reach you.
   function unlockCell(cellId, key) {
     const cell = cells.find((c) => c.id === cellId);
     if (!cell) return false;
@@ -183,7 +169,6 @@ export default function WispaPrototype() {
     return true;
   }
 
-  // A post is either text ({ text }) or an attachment ({ kind, name, url, size }).
   function postToHive(payload) {
     setHivePosts((p) => [...p, { id: Date.now(), time: nowTime(), ...payload }]);
   }
@@ -191,7 +176,7 @@ export default function WispaPrototype() {
   const shared = {
     C, mode, lang, setLang,
     tier, isPro, wispId, hiveId, myId: wispId, username, msgKey, loginPass,
-    hasHive: isPro, // Pro can send video/files and owns a Hive
+    hasHive: isPro,
     tab, setTab, notify, setScreen,
     cells, activeCell, setActiveCell, openCell, sendInCell, openCellAttachment, startNewCell, unlockCell,
     startUpgrade, changeName,

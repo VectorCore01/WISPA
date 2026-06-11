@@ -1,18 +1,6 @@
 import { useState } from "react";
 import { FACE_MONO, ENGRAVE, HIVE_PRICE } from "../lib/theme.js";
-
-function TermHead({ C, children, mb = 4 }) {
-  return (
-    <h2 style={{ fontFamily: FACE_MONO, fontSize: 13, color: C.textDim, letterSpacing: "0.08em", marginBottom: mb, fontWeight: 600 }}>
-      <span style={{ color: C.accent }}>&gt;</span> {children}
-      <span style={{ color: C.accent, animation: "blink 1.1s step-end infinite" }}>_</span>
-    </h2>
-  );
-}
-
-function Panel({ C, children, style }) {
-  return <div style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 6, ...style }}>{children}</div>;
-}
+import { TermHead, Panel } from "./shared.jsx";
 
 export default function AccountTab({ C, tier, isPro, wispId, hiveId, username, msgKey, loginPass, changeName, startUpgrade }) {
   const [editing, setEditing] = useState(false);
@@ -67,15 +55,6 @@ export default function AccountTab({ C, tier, isPro, wispId, hiveId, username, m
         <div style={{ fontWeight: 700, marginBottom: 6 }}>Your message key</div>
         <p style={{ color: C.textDim, fontSize: 14, lineHeight: 1.5, marginBottom: 10 }}>The 6-digit code others type (with your WISP id) to reach you. Share it only with people you want to hear from.</p>
         <div style={{ fontFamily: FACE_MONO, fontSize: 26, color: C.text, letterSpacing: "0.3em" }}>{msgKey || "------"}</div>
-      </Panel>
-
-      <Panel C={C} style={{ padding: 18, marginBottom: 16 }}>
-        <div style={{ fontWeight: 700, marginBottom: 6 }}>How you log in</div>
-        {isPro ? (
-          <p style={{ color: C.textDim, fontSize: 14, lineHeight: 1.5 }}>With your WISP id and your <strong style={{ color: C.text }}>24-word key</strong>. Keep the words offline — they're the only way back.</p>
-        ) : (
-          <p style={{ color: C.textDim, fontSize: 14, lineHeight: 1.5 }}>With your WISP id and your password: <span style={{ fontFamily: FACE_MONO, color: C.text }}>{loginPass || "—"}</span></p>
-        )}
       </Panel>
 
       {isPro ? (
