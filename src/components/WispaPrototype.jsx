@@ -20,8 +20,13 @@ import IntroOverlay from "./IntroOverlay.jsx";
 export default function WispaPrototype() {
   const saved = loadSession();
 
-  const [mode] = useState("dark");
+  const [mode, setMode] = useState(saved.mode === "light" ? "light" : "dark");
   const C = THEMES[mode];
+  function toggleMode() { setMode((m) => (m === "dark" ? "light" : "dark")); }
+
+  // Vault-Code: wird beim Eintritt über die Cell-Taste gesetzt, ersetzt in WISPA
+  // den 6-stelligen Cell-Key und wird beim Logout wieder gelöscht.
+  const [vaultCode, setVaultCode] = useState("");
 
   const [lang, setLang] = useState("en");
   // On refresh, only a real logged-in app session is restored. Every pre-app
@@ -57,8 +62,21 @@ export default function WispaPrototype() {
 
   useEffect(() => {
     if (!mounted.current) { mounted.current = true; return; }
-    saveSession({ screen, tier, wispId, hiveId, msgKey, username, tab, hiveCfg });
-  }, [screen, tier, wispId, hiveId, msgKey, username, tab, hiveCfg]);
+    saveSession({ screen, tier, wispId, hiveId, msgKey, username, tab, hiveCfg, mode });
+  }, [screen, tier, wispId, hiveId, msgKey, username, tab, hiveCfg, mode]);
+
+  // Aufgerufen vom Taschenrechner, wenn Zahl getippt + Cell-Logo gedrückt + Code
+  // eingegeben wurde. Aus der Panik-Tarnung (visor) kehren wir nur zurück, wenn der
+  // Code stimmt; vom Cover aus setzt der Code die Sitzung und öffnet WISPA.
+  function calcUnlock(code) {
+    if (visor) {
+      if (vaultCode && code !== vaultCode) { notify("Wrong code."); return; }
+      setVisor(false);
+      return;
+    }
+    setVaultCode(code);
+    setScreen("wisp-landing");
+  }
 
   function notify(msg) { setToast(msg); setTimeout(() => setToast(null), 2600); }
 
@@ -168,7 +186,9 @@ export default function WispaPrototype() {
     setHiveMembers([]);
     setHivePosts([]);
     setTab("cells");
-    setScreen("wisp-landing");
+    setVaultCode("");           // Code löschen → beim nächsten Mal neuen Code nötig
+    setVisor(false);
+    setScreen("landing");       // zurück zur Taschenrechner-Tarnung
     notify("Logged out.");
   }
 
@@ -292,8 +312,8 @@ export default function WispaPrototype() {
   }
 
   const shared = {
-    C, mode, lang, setLang,
-    tier, isPro, wispId, hiveId, myId: wispId, username, msgKey, loginPass,
+    C, mode, toggleMode, lang, setLang,
+    tier, isPro, wispId, hiveId, myId: wispId, username, msgKey, loginPass, vaultCode,
     hasHive: isPro && !!hiveId,
     tab, setTab, showVisor, notify, setScreen,
     cells, activeCell, setActiveCell, openCell, sendInCell, openCellAttachment, startNewCell, unlockCell,
@@ -343,11 +363,11 @@ export default function WispaPrototype() {
       )}
 
       {visor ? (
-        <Landing C={C} lang={lang} onStart={() => setVisor(false)} />
+        <Landing C={C} mode={mode} toggleMode={toggleMode} onUnlock={calcUnlock} returning />
       ) : screen === "landing" ? (
-        <Landing C={C} lang={lang} onStart={() => setScreen("wisp-landing")} />
+        <Landing C={C} mode={mode} toggleMode={toggleMode} onUnlock={calcUnlock} />
       ) : screen === "wisp-landing" ? (
-        <WispLanding C={C} onStart={() => setScreen("choice")} onLight={showVisor} />
+        <WispLanding C={C} onStart={() => setScreen("choice")} onLight={toggleMode} />
       ) : screen === "choice" ? (
         <EntryChoice C={C} lang={lang} setLang={setLang} onCreate={startProfile} onLogin={startLogin} onBack={() => setScreen("wisp-landing")} />
       ) : screen === "profile" ? (

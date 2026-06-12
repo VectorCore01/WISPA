@@ -47,19 +47,34 @@ function TabIcon({ id, size = 22 }) {
 }
 
 export default function AppShell(props) {
-  const { C, username, isPro, tab, setTab, setScreen, showVisor } = props;
+  const { C, mode, toggleMode, username, isPro, tab, setTab, setScreen, showVisor } = props;
   const tabs = [["cells", "Cells"], ["hive", "Hive"], ["account", "Account"]];
   return (
     <div style={{ maxWidth: 760, margin: "0 auto", paddingBottom: 90 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 22px", borderBottom: `1px solid ${C.line}`, position: "sticky", top: 0, background: C.bg, zIndex: 10 }}>
-        <button onClick={() => setTab("cells")} aria-label="Cells" style={{ display: "flex", alignItems: "center", gap: 10, background: "transparent", padding: 0 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", padding: "16px 22px", borderBottom: `1px solid ${C.line}`, position: "sticky", top: 0, background: C.bg, zIndex: 10 }}>
+        <button onClick={() => setTab("cells")} aria-label="Cells" style={{ display: "flex", alignItems: "center", gap: 10, background: "transparent", padding: 0, justifySelf: "start" }}>
           <WaspLock size={28} C={C} />
           <span style={{ fontFamily: FACE_MONO, color: C.text, fontSize: 17, fontWeight: 700, letterSpacing: "0.3em" }}>WISPA</span>
         </button>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: FACE_MONO }}>
+
+        {/* Panik-Knopf: tarnt die Sitzung sofort wieder als Taschenrechner */}
+        <button onClick={showVisor} aria-label="Calculator" title="Hide" style={{
+          justifySelf: "center", display: "flex", alignItems: "center", justifyContent: "center",
+          width: 38, height: 38, borderRadius: 9, background: C.surface, border: `1px solid ${C.line}`,
+          color: C.textDim, cursor: "pointer",
+        }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round">
+            <rect x="5" y="2.5" width="14" height="19" rx="2.5" />
+            <rect x="7.5" y="5" width="9" height="4" rx="1" />
+            <line x1="8" y1="13" x2="8" y2="13" /><line x1="12" y1="13" x2="12" y2="13" /><line x1="16" y1="13" x2="16" y2="13" />
+            <line x1="8" y1="17" x2="8" y2="17" /><line x1="12" y1="17" x2="12" y2="17" /><line x1="16" y1="17" x2="16" y2="17" />
+          </svg>
+        </button>
+
+        <div style={{ justifySelf: "end", display: "flex", alignItems: "center", gap: 8, fontFamily: FACE_MONO }}>
           <span style={{ fontSize: 11, color: isPro ? C.accent : C.textDim, ...ENGRAVE, letterSpacing: "0.1em" }}>{isPro ? "WISP PRO" : "WISP"}</span>
           {username && <span style={{ fontSize: 12, color: C.textDim }}>{username}</span>}
-          <button onClick={showVisor} aria-label="Light mode" style={{ background: "transparent", border: "none", color: C.textDim, fontSize: 14, cursor: "pointer", padding: "2px 6px", borderRadius: 3 }}>☀</button>
+          <button onClick={toggleMode} aria-label="Toggle theme" style={{ background: C.surface, border: `1px solid ${C.line}`, color: C.text, fontSize: 14, cursor: "pointer", padding: "4px 9px", borderRadius: 6 }}>{mode === "dark" ? "☀" : "☾"}</button>
         </div>
       </div>
 

@@ -8,12 +8,22 @@ import {
   ROW3_NORM, ROW3_2ND,
 } from "../lib/calc/buttons.js";
 
-export default function Landing({ C, lang, onStart }) {
+// CLCLTR — a real scientific calculator that also hides the WISPA entrance.
+// Typing a number and pressing the honeycomb (Cell) logo asks for a code; that
+// code unlocks WISPA. `onUnlock(code)` hands the code to the parent.
+// `returning` is true when this is the panic-cover shown over a live session.
+export default function Landing({ C, mode, toggleMode, onUnlock, returning }) {
+  const K = C.calc;
   const [display, setDisplay] = useState("0");
   const [result, setResult] = useState(null);
+  const [lastExpr, setLastExpr] = useState("");
   const [mode2, setMode2] = useState(false);
   const [deg, setDeg] = useState(true);
   const [showFrac, setShowFrac] = useState(false);
+
+  // Vault gate
+  const [gate, setGate] = useState(false);
+  const [code, setCode] = useState("");
 
   const refs = useRef({ display, result, deg, showFrac });
   refs.current.display = display;
@@ -23,6 +33,7 @@ export default function Landing({ C, lang, onStart }) {
 
   useEffect(() => {
     const fn = (e) => {
+      if (gate) return; // keyboard goes to the code field while the gate is open
       const d = refs.current.display;
       const r = refs.current.result;
       const de = refs.current.deg;
@@ -56,6 +67,7 @@ export default function Landing({ C, lang, onStart }) {
       if (e.key === ")") { s(d + ")"); return; }
       if (e.key === "Enter" || e.key === "=") {
         const v = evalExpr(d, de);
+        setLastExpr(d);
         s(String(v));
         sr(v); setShowFrac(false); return;
       }
@@ -67,7 +79,7 @@ export default function Landing({ C, lang, onStart }) {
     };
     window.addEventListener("keydown", fn);
     return () => window.removeEventListener("keydown", fn);
-  }, []);
+  }, [gate]);
 
   const input = (val) => {
     if (result !== null) { setDisplay(val); setResult(null); setShowFrac(false); return; }
@@ -126,8 +138,27 @@ export default function Landing({ C, lang, onStart }) {
 
   const toggleDR = () => { setDeg(!deg); };
 
+  // ± — toggle the sign of a plain number (the common case, like a phone).
+  const negate = () => {
+    if (result !== null) { const v = -result; setDisplay(String(v)); setResult(v); setShowFrac(false); return; }
+    if (/^-?\d*\.?\d+$/.test(display)) {
+      setDisplay(display.startsWith("-") ? display.slice(1) : "-" + display);
+    }
+  };
+
+  // % — turn the trailing number into a percentage of itself (50 → 0.5).
+  const percent = () => {
+    if (result !== null) { const v = result / 100; setDisplay(String(v)); setResult(v); setShowFrac(false); return; }
+    const m = display.match(/(\d*\.?\d+)$/);
+    if (!m) return;
+    const v = parseFloat(m[1]) / 100;
+    setDisplay(display.slice(0, display.length - m[1].length) + String(v));
+    setShowFrac(false);
+  };
+
   const equals = () => {
     const v = evalExpr(display, deg);
+    setLastExpr(display);
     setDisplay(String(v));
     setResult(v);
     setShowFrac(false);
@@ -148,7 +179,7 @@ export default function Landing({ C, lang, onStart }) {
     }
   };
 
-  const allClear = () => { setDisplay("0"); setResult(null); setShowFrac(false); };
+  const allClear = () => { setDisplay("0"); setResult(null); setShowFrac(false); setLastExpr(""); };
   const backspace = () => {
     if (result !== null) { allClear(); return; }
     setDisplay(display.length > 1 ? display.slice(0, -1) : "0");
@@ -188,108 +219,190 @@ export default function Landing({ C, lang, onStart }) {
     }
   };
 
-  const B = ({ label, action, light, blue, style: extra, s }) => (
-    <button onClick={action} style={{
-      border: "none", borderRadius: 10,
-      background: blue ? "#4A90D9" : light ? "#E8E8E8" : "#1A1A1A",
-      color: blue || !light ? "#FFFFFF" : "#1A1A1A",
-      fontSize: s || 18, fontWeight: 600, fontFamily: FACE_MONO,
-      cursor: "pointer", aspectRatio: "1",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      ...(extra || {}),
-    }}>{label}</button>
-  );
+  // The secret entrance: only reacts once a real number is on screen, otherwise
+  // it behaves like a dead logo so it draws no attention.
+  const tapCell = () => {
+    if (display === "0" || display === "" || display === "Error") return;
+    setCode("");
+    setGate(true);
+  };
+  const submitCode = () => {
+    const c = code.trim();
+    if (!c) return;
+    setGate(false);
+    setCode("");
+    setDisplay("0"); setResult(null); setShowFrac(false); setLastExpr("");
+    onUnlock(c);
+  };
 
-  const grid = { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 5 };
+  const B = ({ label, action, kind, style: extra, s }) => {
+    const bg = kind === "op" ? K.op : kind === "fn" ? K.fn : K.num;
+    const fg = kind === "op" ? K.opText : kind === "fn" ? K.fnText : K.numText;
+    return (
+      <button onClick={action} style={{
+        border: "none", borderRadius: 12,
+        background: bg, color: fg,
+        fontSize: s || 18, fontWeight: 600, fontFamily: FACE_MONO,
+        cursor: "pointer", aspectRatio: "1",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        ...(extra || {}),
+      }}>{label}</button>
+    );
+  };
+
+  const grid = { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 };
 
   const row = (btns) => (
     <div style={grid}>
       {btns.map((b, i) => {
         if (b.a === "none") return <div key={i} />;
         const fn = handle2ndAction(b.a);
-        const isNum = !b.light && !b.blue;
-        return <B key={i} label={b.l} action={fn} light={b.light} blue={b.blue} s={b.s || (isNum ? 18 : 14)} />;
+        return <B key={i} label={b.l} action={fn} kind="fn" s={b.s || 14} />;
       })}
     </div>
   );
 
   const fracLabel = showFrac ? "→Dec" : "→Frac";
 
+  // Honeycomb cell — both the WISPA mark and the hidden trigger.
+  const CellMark = ({ size = 22 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={K.op} strokeWidth="2" strokeLinejoin="round">
+      <polygon points="12,2.5 20,7 20,17 12,21.5 4,17 4,7" />
+    </svg>
+  );
+
   return (
     <div style={{
-      minHeight: "100vh", background: "#FFFFFF",
-      backgroundImage: `url("data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='56' height='96' viewBox='0 0 56 96'><g fill='none' stroke='#B3D4FF' stroke-width='1.5'><path d='M28 0 L56 16 L56 48 L28 64 L0 48 L0 16 Z'/><path d='M28 64 L56 80 L56 96 M28 64 L0 80 L0 96 M56 16 L56 0 M0 16 L0 0'/></g></svg>`)}")`,
+      minHeight: "100vh", background: K.page,
+      backgroundImage: `url("data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='56' height='96' viewBox='0 0 56 96'><g fill='none' stroke='${K.grid}' stroke-width='1.5' stroke-opacity='0.5'><path d='M28 0 L56 16 L56 48 L28 64 L0 48 L0 16 Z'/><path d='M28 64 L56 80 L56 96 M28 64 L0 80 L0 96 M56 16 L56 0 M0 16 L0 0'/></g></svg>`)}")`,
       backgroundSize: "56px 96px",
       display: "flex", flexDirection: "column", alignItems: "center",
       justifyContent: "center", padding: "0 24px", fontFamily: FACE_MONO,
+      transition: "background .3s",
     }}>
       <div style={{
-        background: "#FFFFFF", borderRadius: 24, padding: "16px 14px 20px",
-        boxShadow: "0 12px 40px rgba(0,0,0,0.08)",
-        width: "100%", maxWidth: 320,
+        background: K.card, borderRadius: 26, padding: "16px 14px 20px",
+        boxShadow: mode === "dark" ? "0 16px 50px rgba(0,0,0,0.5)" : "0 12px 40px rgba(0,0,0,0.10)",
+        width: "100%", maxWidth: 330, position: "relative",
       }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: "0.12em", color: "#6B6B6B" }}>CLCLTR</span>
-            <button onClick={() => setMode2(!mode2)} style={{
-              background: mode2 ? "#1A1A1A" : "#E8E8E8", border: "none", borderRadius: 4,
-              color: mode2 ? "#FFF" : "#1A1A1A", fontSize: 10, fontWeight: 700,
-              padding: "2px 6px", cursor: "pointer", fontFamily: FACE_MONO,
-            }}>2nd</button>
-          </div>
-          <button onClick={onStart} style={{
-            background: "transparent", border: "none", color: "#6B6B6B",
-            fontSize: 12, cursor: "pointer", fontFamily: FACE_MONO,
-            display: "flex", alignItems: "center", gap: 4,
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <button onClick={tapCell} title="" aria-label="menu" style={{
+            background: "transparent", border: "none", padding: 0, cursor: "pointer",
+            display: "flex", alignItems: "center", gap: 7,
           }}>
-            <span style={{ fontSize: 14 }}>☽</span> Dark
+            <CellMark size={20} />
+            <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: "0.12em", color: K.muted }}>CLCLTR</span>
           </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button onClick={() => setMode2(!mode2)} style={{
+              background: mode2 ? K.op : K.fn, border: "none", borderRadius: 5,
+              color: mode2 ? K.opText : K.fnText, fontSize: 10, fontWeight: 700,
+              padding: "3px 7px", cursor: "pointer", fontFamily: FACE_MONO,
+            }}>2nd</button>
+            <button onClick={toggleMode} aria-label="theme" style={{
+              background: K.fn, border: "none", borderRadius: 5, color: K.fnText,
+              fontSize: 13, padding: "3px 8px", cursor: "pointer",
+            }}>{mode === "dark" ? "☀" : "☾"}</button>
+          </div>
         </div>
 
         <div style={{
-          background: "#F5F5F5", borderRadius: 12, padding: "12px 14px",
-          marginBottom: 12, textAlign: "right", fontSize: 22, fontWeight: 700,
-          color: "#1A1A1A", fontFamily: FACE_MONO, minHeight: 44,
-          letterSpacing: "0.02em", overflow: "hidden", wordBreak: "break-all", lineHeight: 1.4,
+          background: K.display, borderRadius: 14, padding: "12px 14px",
+          marginBottom: 12, textAlign: "right", fontFamily: FACE_MONO,
+          color: K.displayText, minHeight: 64, overflow: "hidden",
+          display: "flex", flexDirection: "column", justifyContent: "flex-end",
         }}>
-          {fmtDisplay(display, showFrac)}
+          <div style={{ fontSize: 12, color: K.muted, minHeight: 16, letterSpacing: "0.02em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {lastExpr}
+          </div>
+          <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: "0.02em", wordBreak: "break-all", lineHeight: 1.3 }}>
+            {fmtDisplay(display, showFrac)}
+          </div>
         </div>
 
         {row(mode2 ? ROW1_2ND : ROW1_NORM)}
-        <div style={{ height: 5 }} />
+        <div style={{ height: 6 }} />
         {row(mode2 ? ROW2_2ND : ROW2_NORM)}
-        <div style={{ height: 5 }} />
+        <div style={{ height: 6 }} />
         {row(mode2 ? ROW3_2ND : ROW3_NORM)}
-        <div style={{ height: 5 }} />
+        <div style={{ height: 6 }} />
 
         <div style={grid}>
-          <B label="C" action={allClear} light s={16} />
-          <B label="÷" action={() => operate("÷")} light s={16} />
-          <B label="×" action={() => operate("×")} light s={16} />
-          <B label="⌫" action={backspace} light s={14} />
+          <B label="C" action={allClear} kind="fn" s={16} />
+          <B label="±" action={negate} kind="fn" s={18} />
+          <B label="%" action={percent} kind="fn" s={16} />
+          <B label="⌫" action={backspace} kind="fn" s={14} />
           <B label="7" action={() => input("7")} />
           <B label="8" action={() => input("8")} />
           <B label="9" action={() => input("9")} />
-          <B label="-" action={() => operate("-")} light s={18} />
+          <B label="÷" action={() => operate("÷")} kind="op" s={20} />
           <B label="4" action={() => input("4")} />
           <B label="5" action={() => input("5")} />
           <B label="6" action={() => input("6")} />
-          <B label="+" action={() => operate("+")} light s={18} />
+          <B label="×" action={() => operate("×")} kind="op" s={20} />
           <B label="1" action={() => input("1")} />
           <B label="2" action={() => input("2")} />
           <B label="3" action={() => input("3")} />
-          <B label="=" action={equals} blue />
-          <B label="0" action={() => input("0")} style={{ aspectRatio: "auto", gridColumn: "span 2" }} />
-          <B label="." action={addDot} s={18} />
-          <B label={fracLabel} action={toggleFD} s={10} light />
+          <B label="-" action={() => operate("-")} kind="op" s={22} />
+          <B label={fracLabel} action={toggleFD} kind="fn" s={11} />
+          <B label="0" action={() => input("0")} />
+          <B label="." action={addDot} s={20} />
+          <B label="+" action={() => operate("+")} kind="op" s={22} />
+          <B label="=" action={equals} kind="op" style={{ aspectRatio: "auto", gridColumn: "span 4", height: 52 }} s={22} />
         </div>
       </div>
 
-      <div style={{
-        position: "fixed", bottom: 12, fontSize: 9, color: "#AAA", letterSpacing: "0.08em",
-      }}>
+      <div style={{ marginTop: 14, fontSize: 9, color: K.muted, letterSpacing: "0.08em", opacity: 0.7 }}>
         CLCLTR v2.0 · {deg ? "DEG" : "RAD"}
       </div>
+
+      {gate && (
+        <div onClick={() => setGate(false)} style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 24,
+        }}>
+          <div onClick={(e) => e.stopPropagation()} style={{
+            background: K.card, borderRadius: 18, padding: "26px 22px", width: "100%", maxWidth: 320,
+            boxShadow: "0 20px 60px rgba(0,0,0,0.5)", textAlign: "center",
+          }}>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+              <CellMark size={34} />
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: "0.1em", color: K.displayText, marginBottom: 6 }}>
+              {returning ? "ENTER YOUR CODE" : "SET AN ACCESS CODE"}
+            </div>
+            <div style={{ fontSize: 12, color: K.muted, marginBottom: 16, lineHeight: 1.5 }}>
+              {returning ? "Unlock to return to WISPA." : "This code opens your cells. It clears when you log out."}
+            </div>
+            <input
+              autoFocus type="password" value={code}
+              onChange={(e) => setCode(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") submitCode(); if (e.key === "Escape") setGate(false); }}
+              placeholder="• • • •"
+              style={{
+                width: "100%", background: K.display, border: "none", outline: "none",
+                borderRadius: 10, padding: "13px 14px", color: K.displayText,
+                fontSize: 18, fontFamily: FACE_MONO, textAlign: "center", letterSpacing: "0.3em",
+                marginBottom: 14,
+              }}
+            />
+            <button onClick={submitCode} style={{
+              width: "100%", background: K.op, color: K.opText, border: "none",
+              borderRadius: 10, padding: "13px 0", fontSize: 13, fontWeight: 700,
+              letterSpacing: "0.18em", cursor: "pointer", fontFamily: FACE_MONO,
+            }}>
+              {returning ? "UNLOCK" : "ENTER"}
+            </button>
+            <button onClick={() => setGate(false)} style={{
+              width: "100%", background: "transparent", color: K.muted, border: "none",
+              padding: "10px 0 0", fontSize: 12, cursor: "pointer", fontFamily: FACE_MONO,
+            }}>
+              cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

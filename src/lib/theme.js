@@ -4,6 +4,24 @@ export const THEMES = {
     text: "#EAEAEA", textDim: "#9A9A9A", textBright: "#FFFFFF",
     line: "#2A2A2A", lineSoft: "#1F1F1F",
     accent: "#FFB300", onAccent: "#0A0A0A", danger: "#E0664A",
+    // Taschenrechner-Tarnung: schwarz · orange · weiß
+    calc: {
+      page: "#0A0A0A", card: "#141414", display: "#0A0A0A", displayText: "#FFFFFF",
+      num: "#1E1E1E", numText: "#FFFFFF", fn: "#2C2C2C", fnText: "#F2F2F2",
+      op: "#FFB300", opText: "#0A0A0A", muted: "#8A8A8A", grid: "#B3D4FF",
+    },
+  },
+  light: {
+    bg: "#FAFAF7", surface: "#FFFFFF", surface2: "#F0F0EC",
+    text: "#1A1A1A", textDim: "#6B6B6B", textBright: "#000000",
+    line: "#E2E2DE", lineSoft: "#EEEEEA",
+    accent: "#E8861E", onAccent: "#FFFFFF", danger: "#D9543A",
+    // Taschenrechner-Tarnung: weiß · orange · schwarz
+    calc: {
+      page: "#FFFFFF", card: "#FFFFFF", display: "#F5F5F5", displayText: "#1A1A1A",
+      num: "#1A1A1A", numText: "#FFFFFF", fn: "#E8E8E8", fnText: "#1A1A1A",
+      op: "#E8861E", opText: "#FFFFFF", muted: "#6B6B6B", grid: "#B3D4FF",
+    },
   },
 };
 
