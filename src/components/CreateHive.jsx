@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { FACE_MONO, ENGRAVE } from "../lib/theme.js";
+import { FACE_MONO, ENGRAVE, HONEY } from "../lib/theme.js";
 import { TermHead, Panel } from "./shared.jsx";
 
-export default function CreateHive({ C, hiveId, createHive, notify }) {
+export default function CreateHive({ C, createHive, notify, onBack }) {
   const [name, setName] = useState("");
 
   function submit() {
-    if (name.trim().length < 3) return notify("Give your channel a name (3+ characters).");
+    if (name.trim().length < 3) return notify("Give your Hive a name (3+ characters).");
     createHive(name);
   }
 
@@ -14,16 +14,16 @@ export default function CreateHive({ C, hiveId, createHive, notify }) {
 
   return (
     <div>
+      {onBack && <button onClick={onBack} style={{ background: "transparent", color: C.textDim, fontSize: 13, marginBottom: 12 }}>← Hive directory</button>}
       <TermHead C={C} mb={18}>create_hive</TermHead>
       <Panel C={C} style={{ padding: 20, marginBottom: 16 }}>
-        <div style={{ fontWeight: 700, marginBottom: 6 }}>Open your channel</div>
+        <div style={{ fontWeight: 700, marginBottom: 6 }}>Open your Hive</div>
         <p style={{ color: C.textDim, fontSize: 14, lineHeight: 1.5, marginBottom: 16 }}>
-          Your Hive lives at <span style={{ fontFamily: FACE_MONO, color: C.text }}>{hiveId}</span>. Give it a name — a 6-digit Hive-Key will be generated. Share your WISP id + the 6-digit key so people can request to join.
+          Give your Hive a name. Creating it costs <span style={{ color: C.accent, fontWeight: 700 }}>{HONEY.hiveCreate} Honey</span> (WISP Pro only). It then appears in the Hive directory, ranked by its Honey value.
         </p>
-        <label style={{ display: "block", fontSize: 13, color: C.textDim, marginBottom: 6, fontFamily: FACE_MONO }}>Channel name</label>
+        <label style={{ display: "block", fontSize: 13, color: C.textDim, marginBottom: 6, fontFamily: FACE_MONO }}>Hive name</label>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. night-signal" maxLength={32} style={field} />
-        <p style={{ fontSize: 12, color: C.textDim, marginBottom: 12, lineHeight: 1.5 }}>A random 6-digit Hive-Key will be created. Share it with people you want to invite. Nothing happens without the 6-digit key.</p>
-        <button onClick={submit} style={{ width: "100%", background: C.text, color: C.bg, padding: 14, borderRadius: 4, ...ENGRAVE, letterSpacing: "0.12em", fontSize: 13 }}>Create channel</button>
+        <button onClick={submit} style={{ width: "100%", background: C.text, color: C.bg, padding: 14, borderRadius: 4, ...ENGRAVE, letterSpacing: "0.12em", fontSize: 13 }}>Create Hive · {HONEY.hiveCreate} Honey</button>
       </Panel>
     </div>
   );

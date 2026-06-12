@@ -1,10 +1,11 @@
 import { useState, useRef } from "react";
-import { FACE_MONO, ENGRAVE } from "../lib/theme.js";
+import { FACE_MONO, ENGRAVE, HONEY } from "../lib/theme.js";
 import { attachKindOf } from "../lib/helpers.js";
 import Attachment from "./Attachment.jsx";
+import QrCode from "./QrCode.jsx";
 import { TermHead, Panel } from "./shared.jsx";
 
-export default function HiveChannel({ C, isPro, hiveId, hiveCfg, hivePosts, postToHive, hiveMembers, approveMember, rejectMember, destroyHive, notify }) {
+export default function HiveChannel({ C, isPro, hiveId, hiveCfg, hivePosts, postToHive, hiveMembers, approveMember, rejectMember, destroyHive, notify, onBack, spendHoney }) {
   const [draft, setDraft] = useState("");
   const [opened, setOpened] = useState({});
   const fileRef = useRef(null);
@@ -26,8 +27,19 @@ export default function HiveChannel({ C, isPro, hiveId, hiveCfg, hivePosts, post
   const pending = hiveMembers.filter((m) => m.status === "pending");
   const approved = hiveMembers.filter((m) => m.status === "approved");
 
+  // Text is free to read; making media visible costs Honey (image 1 · file 5 · video 10).
+  function revealPost(p) {
+    const cost = HONEY.reveal[p.kind] || 0;
+    if (cost > 0) {
+      if (!spendHoney || !spendHoney(cost)) return;
+      notify(`Unlocked for ${cost} Honey.`);
+    }
+    setOpened((o) => ({ ...o, [p.id]: true }));
+  }
+
   return (
     <div>
+      {onBack && <button onClick={onBack} style={{ background: "transparent", color: C.textDim, fontSize: 13, marginBottom: 12 }}>← Hive directory</button>}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
         <div>
           <TermHead C={C} mb={4}>{hiveCfg.name}</TermHead>
@@ -39,6 +51,15 @@ export default function HiveChannel({ C, isPro, hiveId, hiveCfg, hivePosts, post
           <button onClick={() => { if (window.confirm("Destroy Hive? All posts and members will be lost.")) destroyHive(); }} style={{ background: "transparent", color: C.danger, fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, padding: "6px 12px", ...ENGRAVE, letterSpacing: "0.06em" }}>Destroy Hive</button>
         </div>
       </div>
+
+      <Panel C={C} style={{ padding: 16, marginBottom: 16, display: "flex", alignItems: "center", gap: 16 }}>
+        <QrCode value={hiveId} size={92} />
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>Share your Hive</div>
+          <p style={{ color: C.textDim, fontSize: 13, lineHeight: 1.5 }}>Others scan this to find your Hive — no key needed to view.</p>
+          <div style={{ fontFamily: FACE_MONO, fontSize: 13, color: C.accent, marginTop: 4 }}>{hiveId}</div>
+        </div>
+      </Panel>
 
       {pending.length > 0 && (
         <Panel C={C} style={{ padding: 16, marginBottom: 16, borderColor: C.accent }}>
@@ -78,7 +99,7 @@ export default function HiveChannel({ C, isPro, hiveId, hiveCfg, hivePosts, post
         {[...hivePosts].reverse().map((p) => (
           <Panel key={p.id} C={C} style={{ padding: "14px 16px" }}>
             {p.url ? (
-              <Attachment C={C} post={p} isPro={isPro} opened={!!opened[p.id]} onOpen={() => setOpened((o) => ({ ...o, [p.id]: true }))} />
+              <Attachment C={C} post={p} isPro={isPro} opened={!!opened[p.id]} cost={HONEY.reveal[p.kind] || 0} onOpen={() => revealPost(p)} />
             ) : (
               <div style={{ fontSize: 15, lineHeight: 1.4 }}>{p.text}</div>
             )}

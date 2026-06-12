@@ -6,13 +6,26 @@ const router = Router();
 
 function rand6() { return String(Math.floor(100000 + Math.random() * 900000)); }
 
+// WISP ids: exactly 3 letters + 3 digits in random order (ambiguous chars out).
+const ID_LETTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+const ID_DIGITS = "23456789";
+function randCode() {
+  const pick = (set) => set[Math.floor(Math.random() * set.length)];
+  const chars = [pick(ID_LETTERS), pick(ID_LETTERS), pick(ID_LETTERS), pick(ID_DIGITS), pick(ID_DIGITS), pick(ID_DIGITS)];
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars.join("");
+}
+
 router.post("/register", async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password || password.length < 4)
     return res.status(400).json({ error: "Username and password (min 4 chars) required." });
 
   const db = await getDb();
-  const wispId = "WISP-" + rand6();
+  const wispId = "WISP-" + randCode();
   const msgKey = rand6();
   const hash = bcrypt.hashSync(password, 10);
   const keyHash = bcrypt.hashSync(msgKey, 10);

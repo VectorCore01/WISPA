@@ -1,8 +1,9 @@
 import { useState } from "react";
+import { CalcButton } from "./shared.jsx";
 import { FACE_MONO } from "../lib/theme.js";
 import { LANG_NAMES, LANG_LIST, t } from "../lib/translations.js";
 
-export default function EntryChoice({ C, lang, setLang, onCreate, onLogin, onBack }) {
+export default function EntryChoice({ C, mode, toggleMode, lang, setLang, onCreate, onLogin, onBack, onCalc }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -19,6 +20,8 @@ export default function EntryChoice({ C, lang, setLang, onCreate, onLogin, onBac
       overflow: "hidden",
     }}>
       <button onClick={onBack} style={{ position: "fixed", top: 22, left: 22, background: "transparent", color: C.textDim, fontSize: 13 }}>← {t(lang, "Back")}</button>
+      <CalcButton C={C} onClick={onCalc} style={{ top: 56, left: 22, right: "auto" }} />
+      <button onClick={toggleMode} aria-label="Toggle theme" style={{ position: "fixed", top: 56, right: 22, zIndex: 20, width: 36, height: 36, borderRadius: 8, background: C.surface, border: `1px solid ${C.line}`, color: C.text, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, cursor: "pointer" }}>{mode === "dark" ? "☀" : "☾"}</button>
 
       <div style={{ position: "fixed", top: 22, right: 22 }}>
         <button onClick={() => setOpen(!open)}

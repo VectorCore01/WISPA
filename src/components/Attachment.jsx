@@ -3,7 +3,7 @@ import { fmtSize, ATTACH_ICON, ATTACH_LABEL } from "../lib/helpers.js";
 
 // A sealed attachment: shown in the chat/hive but unrecognizable until opened.
 // Once opened it reveals the image/video/file. Only WISP Pro can download.
-export default function Attachment({ C, post, isPro, opened, onOpen, onDark }) {
+export default function Attachment({ C, post, isPro, opened, onOpen, onDark, cost }) {
   const icon = ATTACH_ICON[post.kind] || ATTACH_ICON.file;
   const label = ATTACH_LABEL[post.kind] || ATTACH_LABEL.file;
 
@@ -14,7 +14,9 @@ export default function Attachment({ C, post, isPro, opened, onOpen, onDark }) {
         <span style={{ fontSize: 22, filter: "blur(2px)", opacity: 0.7 }}>{icon}</span>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: "0.04em" }}>🔒 Sealed {label.toLowerCase()}</div>
-          <div style={{ fontSize: 11, opacity: 0.7, fontFamily: FACE_MONO }}>tap to open · {fmtSize(post.size)}</div>
+          <div style={{ fontSize: 11, opacity: 0.7, fontFamily: FACE_MONO }}>
+            {cost ? `reveal · ${cost} Honey` : "tap to open"} · {fmtSize(post.size)}
+          </div>
         </div>
       </button>
     );
@@ -42,7 +44,7 @@ export default function Attachment({ C, post, isPro, opened, onOpen, onDark }) {
         <div style={{ fontSize: 11, color: C.textDim, fontFamily: FACE_MONO, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {post.kind !== "file" ? post.name : ""}
         </div>
-        {isPro ? (
+        {(isPro || post.kind === "image") ? (
           <a href={post.url} download={post.name} style={{ flexShrink: 0, background: C.text, color: C.bg, borderRadius: 4, padding: "8px 14px", ...ENGRAVE, letterSpacing: "0.06em", fontSize: 11, textDecoration: "none" }}>Download</a>
         ) : (
           <span style={{ flexShrink: 0, fontSize: 11, color: C.textDim, ...ENGRAVE, letterSpacing: "0.06em" }}>Pro to download 🔒</span>

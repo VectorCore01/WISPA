@@ -223,9 +223,9 @@ const T = {
   "your login password": {
     en: "your login password", de: "dein Login-Passwort",
   },
-  "Enter a WISP id like WISP-204913.": {
-    en: "Enter a WISP id like WISP-204913.",
-    de: "Gib eine WISP-ID wie WISP-204913 ein.",
+  "Enter a WISP id like WISP-7K2X9A.": {
+    en: "Enter a WISP id like WISP-7K2X9A.",
+    de: "Gib eine WISP-ID wie WISP-7K2X9A ein.",
   },
 };
 

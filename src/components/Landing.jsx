@@ -12,7 +12,7 @@ import {
 // Typing a number and pressing the honeycomb (Cell) logo asks for a code; that
 // code unlocks WISPA. `onUnlock(code)` hands the code to the parent.
 // `returning` is true when this is the panic-cover shown over a live session.
-export default function Landing({ C, mode, toggleMode, onUnlock, returning }) {
+export default function Landing({ C, mode, toggleMode, onUnlock, onReset, returning }) {
   const K = C.calc;
   const [display, setDisplay] = useState("0");
   const [result, setResult] = useState(null);
@@ -21,19 +21,26 @@ export default function Landing({ C, mode, toggleMode, onUnlock, returning }) {
   const [deg, setDeg] = useState(true);
   const [showFrac, setShowFrac] = useState(false);
 
-  // Vault gate
-  const [gate, setGate] = useState(false);
-  const [code, setCode] = useState("");
+  // Setting a code (first time) is hidden: tap the cell to "arm" the typed code,
+  // the display silently returns to 0, then the same digits + "=" confirm it.
+  const [armCode, setArmCode] = useState(null);
+  // Trash on the 2nd page arms a hidden reset: tap it, then "=" wipes the code
+  // and logs out — no dialog, nothing shown.
+  const [resetArmed, setResetArmed] = useState(false);
 
   const refs = useRef({ display, result, deg, showFrac });
   refs.current.display = display;
   refs.current.result = result;
   refs.current.deg = deg;
   refs.current.showFrac = showFrac;
+  refs.current.armCode = armCode;
+  refs.current.returning = returning;
+  refs.current.onUnlock = onUnlock;
+  refs.current.resetArmed = resetArmed;
+  refs.current.onReset = onReset;
 
   useEffect(() => {
     const fn = (e) => {
-      if (gate) return; // keyboard goes to the code field while the gate is open
       const d = refs.current.display;
       const r = refs.current.result;
       const de = refs.current.deg;
@@ -66,6 +73,17 @@ export default function Landing({ C, mode, toggleMode, onUnlock, returning }) {
       }
       if (e.key === ")") { s(d + ")"); return; }
       if (e.key === "Enter" || e.key === "=") {
+        if (refs.current.resetArmed) {
+          setResetArmed(false); s("0"); sr(null); setShowFrac(false); setLastExpr("");
+          refs.current.onReset && refs.current.onReset();
+          return;
+        }
+        if (refs.current.armCode != null) {
+          const ac = refs.current.armCode;
+          setArmCode(null); s("0"); sr(null); setShowFrac(false); setLastExpr("");
+          if (d === ac) refs.current.onUnlock(ac);
+          return;
+        }
         const v = evalExpr(d, de);
         setLastExpr(d);
         s(String(v));
@@ -79,7 +97,7 @@ export default function Landing({ C, mode, toggleMode, onUnlock, returning }) {
     };
     window.addEventListener("keydown", fn);
     return () => window.removeEventListener("keydown", fn);
-  }, [gate]);
+  }, []);
 
   const input = (val) => {
     if (result !== null) { setDisplay(val); setResult(null); setShowFrac(false); return; }
@@ -157,6 +175,20 @@ export default function Landing({ C, mode, toggleMode, onUnlock, returning }) {
   };
 
   const equals = () => {
+    // Hidden reset: trash was tapped, "=" wipes the code and logs out — silently.
+    if (resetArmed) {
+      setResetArmed(false); clearAll();
+      onReset && onReset();
+      return;
+    }
+    // While a code is armed, "=" confirms it: matching digits unlock, anything
+    // else just silently clears (looks like an ordinary calculator).
+    if (armCode != null) {
+      const ac = armCode;
+      setArmCode(null); clearAll();
+      if (display === ac) onUnlock(ac);
+      return;
+    }
     const v = evalExpr(display, deg);
     setLastExpr(display);
     setDisplay(String(v));
@@ -179,7 +211,7 @@ export default function Landing({ C, mode, toggleMode, onUnlock, returning }) {
     }
   };
 
-  const allClear = () => { setDisplay("0"); setResult(null); setShowFrac(false); setLastExpr(""); };
+  const allClear = () => { setDisplay("0"); setResult(null); setShowFrac(false); setLastExpr(""); setArmCode(null); setResetArmed(false); };
   const backspace = () => {
     if (result !== null) { allClear(); return; }
     setDisplay(display.length > 1 ? display.slice(0, -1) : "0");
@@ -219,20 +251,20 @@ export default function Landing({ C, mode, toggleMode, onUnlock, returning }) {
     }
   };
 
-  // The secret entrance: only reacts once a real number is on screen, otherwise
-  // it behaves like a dead logo so it draws no attention.
+  const clearAll = () => { setDisplay("0"); setResult(null); setShowFrac(false); setLastExpr(""); };
+
+  // The secret entrance: type a 4-digit number, then tap the honeycomb.
+  // Anything that is not exactly 4 digits leaves it a dead logo, drawing no attention.
+  // Returning from the panic cover: the 4 digits are checked straight away (parent
+  //   plays the honeycomb burst only if the code is right).
+  // First time: tapping the cell silently "arms" the code and resets to 0 — you
+  //   then re-type the same digits and press "=" to confirm (no dialog, hidden).
   const tapCell = () => {
-    if (display === "0" || display === "" || display === "Error") return;
-    setCode("");
-    setGate(true);
-  };
-  const submitCode = () => {
-    const c = code.trim();
-    if (!c) return;
-    setGate(false);
-    setCode("");
-    setDisplay("0"); setResult(null); setShowFrac(false); setLastExpr("");
-    onUnlock(c);
+    if (!/^\d{4}$/.test(display)) return;
+    const c = display;
+    clearAll();
+    if (returning) { onUnlock(c); return; }
+    setArmCode(c);
   };
 
   const B = ({ label, action, kind, style: extra, s }) => {
@@ -256,6 +288,18 @@ export default function Landing({ C, mode, toggleMode, onUnlock, returning }) {
     <div style={grid}>
       {btns.map((b, i) => {
         if (b.a === "none") return <div key={i} />;
+        if (b.a === "reset") return (
+          <button key={i} onClick={() => { setArmCode(null); setResetArmed(true); }} aria-label="reset" style={{
+            border: "none", borderRadius: 12, background: K.fn, color: K.fnText,
+            aspectRatio: "1", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+          }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 7h16" /><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+              <path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" />
+              <path d="M10 11v6M14 11v6" />
+            </svg>
+          </button>
+        );
         const fn = handle2ndAction(b.a);
         return <B key={i} label={b.l} action={fn} kind="fn" s={b.s || 14} />;
       })}
@@ -273,13 +317,13 @@ export default function Landing({ C, mode, toggleMode, onUnlock, returning }) {
   );
 
   return (
-    <div style={{
+    <div translate="no" className="notranslate" style={{
       minHeight: "100vh", background: K.page,
       backgroundImage: `url("data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='56' height='96' viewBox='0 0 56 96'><g fill='none' stroke='${K.grid}' stroke-width='1.5' stroke-opacity='0.5'><path d='M28 0 L56 16 L56 48 L28 64 L0 48 L0 16 Z'/><path d='M28 64 L56 80 L56 96 M28 64 L0 80 L0 96 M56 16 L56 0 M0 16 L0 0'/></g></svg>`)}")`,
       backgroundSize: "56px 96px",
       display: "flex", flexDirection: "column", alignItems: "center",
       justifyContent: "center", padding: "0 24px", fontFamily: FACE_MONO,
-      transition: "background .3s",
+      transition: "background-color .1s linear",
     }}>
       <div style={{
         background: K.card, borderRadius: 26, padding: "16px 14px 20px",
@@ -287,13 +331,18 @@ export default function Landing({ C, mode, toggleMode, onUnlock, returning }) {
         width: "100%", maxWidth: 330, position: "relative",
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <button onClick={tapCell} title="" aria-label="menu" style={{
-            background: "transparent", border: "none", padding: 0, cursor: "pointer",
-            display: "flex", alignItems: "center", gap: 7,
-          }}>
-            <CellMark size={20} />
-            <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: "0.12em", color: K.muted }}>CLCLTR</span>
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+            <button onClick={tapCell} aria-label="menu" style={{
+              background: "transparent", border: "none", padding: 0, cursor: "pointer",
+              display: "flex", alignItems: "center",
+            }}>
+              <CellMark size={20} />
+            </button>
+            <button onClick={() => window.location.reload()} aria-label="CLCLTR" style={{
+              background: "transparent", border: "none", padding: 0, cursor: "pointer",
+              fontSize: 14, fontWeight: 700, letterSpacing: "0.12em", color: K.muted, fontFamily: FACE_MONO,
+            }}>CLCLTR</button>
+          </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <button onClick={() => setMode2(!mode2)} style={{
               background: mode2 ? K.op : K.fn, border: "none", borderRadius: 5,
@@ -302,7 +351,8 @@ export default function Landing({ C, mode, toggleMode, onUnlock, returning }) {
             }}>2nd</button>
             <button onClick={toggleMode} aria-label="theme" style={{
               background: K.fn, border: "none", borderRadius: 5, color: K.fnText,
-              fontSize: 13, padding: "3px 8px", cursor: "pointer",
+              fontSize: 13, cursor: "pointer", width: 28, height: 24, padding: 0,
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
             }}>{mode === "dark" ? "☀" : "☾"}</button>
           </div>
         </div>
@@ -356,53 +406,6 @@ export default function Landing({ C, mode, toggleMode, onUnlock, returning }) {
       <div style={{ marginTop: 14, fontSize: 9, color: K.muted, letterSpacing: "0.08em", opacity: 0.7 }}>
         CLCLTR v2.0 · {deg ? "DEG" : "RAD"}
       </div>
-
-      {gate && (
-        <div onClick={() => setGate(false)} style={{
-          position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)",
-          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 24,
-        }}>
-          <div onClick={(e) => e.stopPropagation()} style={{
-            background: K.card, borderRadius: 18, padding: "26px 22px", width: "100%", maxWidth: 320,
-            boxShadow: "0 20px 60px rgba(0,0,0,0.5)", textAlign: "center",
-          }}>
-            <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
-              <CellMark size={34} />
-            </div>
-            <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: "0.1em", color: K.displayText, marginBottom: 6 }}>
-              {returning ? "ENTER YOUR CODE" : "SET AN ACCESS CODE"}
-            </div>
-            <div style={{ fontSize: 12, color: K.muted, marginBottom: 16, lineHeight: 1.5 }}>
-              {returning ? "Unlock to return to WISPA." : "This code opens your cells. It clears when you log out."}
-            </div>
-            <input
-              autoFocus type="password" value={code}
-              onChange={(e) => setCode(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") submitCode(); if (e.key === "Escape") setGate(false); }}
-              placeholder="• • • •"
-              style={{
-                width: "100%", background: K.display, border: "none", outline: "none",
-                borderRadius: 10, padding: "13px 14px", color: K.displayText,
-                fontSize: 18, fontFamily: FACE_MONO, textAlign: "center", letterSpacing: "0.3em",
-                marginBottom: 14,
-              }}
-            />
-            <button onClick={submitCode} style={{
-              width: "100%", background: K.op, color: K.opText, border: "none",
-              borderRadius: 10, padding: "13px 0", fontSize: 13, fontWeight: 700,
-              letterSpacing: "0.18em", cursor: "pointer", fontFamily: FACE_MONO,
-            }}>
-              {returning ? "UNLOCK" : "ENTER"}
-            </button>
-            <button onClick={() => setGate(false)} style={{
-              width: "100%", background: "transparent", color: K.muted, border: "none",
-              padding: "10px 0 0", fontSize: 12, cursor: "pointer", fontFamily: FACE_MONO,
-            }}>
-              cancel
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

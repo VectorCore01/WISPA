@@ -1,8 +1,8 @@
 import { useState } from "react";
-import WaspLock from "./WaspLock.jsx";
+import { CalcButton, CellLogo } from "./shared.jsx";
 import { FACE_MONO } from "../lib/theme.js";
 
-export default function WispLanding({ C, onStart, onLight }) {
+export default function WispLanding({ C, mode, onStart, onLight, onCalc }) {
   const [clicked, setClicked] = useState(false);
 
   const handleClick = () => {
@@ -25,6 +25,15 @@ export default function WispLanding({ C, onStart, onLight }) {
       position: "relative",
       overflow: "hidden",
     }}>
+      <CalcButton C={C} onClick={onCalc} />
+
+      <button onClick={onLight} aria-label="Toggle theme" style={{
+        position: "fixed", top: 18, left: 18, zIndex: 30,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        width: 38, height: 38, borderRadius: 9, background: C.surface,
+        border: `1px solid ${C.line}`, color: C.text, fontSize: 16, cursor: "pointer",
+      }}>{mode === "dark" ? "☀" : "☾"}</button>
+
       {clicked && (
         <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
           {[0, 0.09, 0.18].map((d, i) => (
@@ -47,27 +56,8 @@ export default function WispLanding({ C, onStart, onLight }) {
           opacity: clicked ? 0 : 1,
           pointerEvents: clicked ? "none" : "auto",
         }}>
-        <WaspLock size={144} C={C} />
+        <CellLogo size={132} C={C} />
       </div>
-
-      <button
-        onClick={(e) => { e.stopPropagation(); onLight(); }}
-        style={{
-          marginTop: 40,
-          background: "transparent",
-          border: "none",
-          color: C.textDim,
-          fontSize: 12,
-          cursor: "pointer",
-          fontFamily: FACE_MONO,
-          padding: "6px 14px",
-          borderRadius: 4,
-        }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = C.surface; e.currentTarget.style.color = C.accent; }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.textDim; }}
-      >
-        ☀ Light
-      </button>
 
       <style>{`
         @keyframes drift {

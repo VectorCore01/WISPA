@@ -6,6 +6,17 @@ export function seedHiveMembers() {
   ];
 }
 
+// Sample public Hives for the directory. Value is measured in Honey.
+export function seedHives() {
+  return [
+    { id: "HIVE-204913", name: "night-signal", honey: 1840, members: 312 },
+    { id: "HIVE-771028", name: "driftwood", honey: 920, members: 144 },
+    { id: "HIVE-318864", name: "ember", honey: 410, members: 73 },
+    { id: "HIVE-660913", name: "low-tide", honey: 155, members: 28 },
+    { id: "HIVE-118402", name: "paper-moth", honey: 60, members: 9 },
+  ];
+}
+
 export function seedCells() {
   const now = Date.now();
   return [

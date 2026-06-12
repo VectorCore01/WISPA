@@ -22,5 +22,5 @@ export const ROW3_NORM = [
 ];
 export const ROW3_2ND = [
   { l: "rand", a: "rand", s: 11 }, { l: "D/R", a: "dr", s: 11 },
-  { l: "√", a: "√", s: 16 }, { l: " ", a: "none" },
+  { l: "√", a: "√", s: 16 }, { l: "", a: "reset" },
 ];

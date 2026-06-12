@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { FACE_MONO, ENGRAVE } from "../lib/theme.js";
-import { TermHead, Panel } from "./shared.jsx";
+import { TermHead, Panel, WispIdInput } from "./shared.jsx";
 import CellChat from "./CellChat.jsx";
 
 export default function CellsTab(props) {
-  const { C, cells, activeCell, setActiveCell, openCell, startNewCell, notify, hasHive, setTab, vaultCode } = props;
+  const { C, cells, activeCell, setActiveCell, openCell, startNewCell, notify, hasHive, setTab } = props;
   const [newPeer, setNewPeer] = useState("");
+  const [newKey, setNewKey] = useState("");
 
   if (activeCell) {
     const cell = cells.find((c) => c.id === activeCell);
@@ -13,11 +14,11 @@ export default function CellsTab(props) {
   }
 
   function start() {
-    const v = newPeer.trim().toUpperCase();
-    if (!/^WISP-\d{6}$/.test(v)) return notify("Enter a WISP id like WISP-204913.");
-    if (!vaultCode) return notify("Your access code is missing — log out and back in.");
-    const ok = startNewCell(v, vaultCode);
-    if (ok) { setNewPeer(""); }
+    const v = "WISP-" + newPeer.trim().toUpperCase();
+    if (!/^WISP-[A-Z0-9]{6}$/.test(v)) return notify("Enter a WISP id like WISP-7K2X9A.");
+    if (!/^\d{6}$/.test(newKey.trim())) return notify("Enter their 6-digit message key.");
+    const ok = startNewCell(v, newKey.trim());
+    if (ok) { setNewPeer(""); setNewKey(""); }
   }
 
   return (
@@ -30,11 +31,12 @@ export default function CellsTab(props) {
       </p>
 
       <Panel C={C} style={{ padding: 8, marginBottom: 18 }}>
-        <div style={{ display: "flex", gap: 8 }}>
-          <input value={newPeer} onChange={(e) => setNewPeer(e.target.value)} onKeyDown={(e) => e.key === "Enter" && start()} placeholder="Their WISP id — WISP-000000" style={{ flex: 1, background: "transparent", border: "none", outline: "none", padding: "10px 8px", color: C.text, fontSize: 14, fontFamily: FACE_MONO }} />
+        <WispIdInput C={C} value={newPeer} onChange={setNewPeer} onEnter={start} wrapStyle={{ borderBottom: `1px solid ${C.line}` }} />
+        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+          <input value={newKey} onChange={(e) => setNewKey(e.target.value.replace(/\D/g, "").slice(0, 6))} onKeyDown={(e) => e.key === "Enter" && start()} inputMode="numeric" placeholder="Their message key — 6 digits" style={{ flex: 1, background: "transparent", border: "none", outline: "none", padding: "10px 8px", color: C.text, fontSize: 14, fontFamily: FACE_MONO, letterSpacing: "0.2em" }} />
           <button onClick={start} style={{ background: C.text, color: C.bg, borderRadius: 4, padding: "0 18px", ...ENGRAVE, letterSpacing: "0.08em", fontSize: 12 }}>Open</button>
         </div>
-        <div style={{ fontSize: 11, color: C.textDim, padding: "4px 8px 2px" }}>Just their WISP id — your access code unlocks the cell automatically.</div>
+        <div style={{ fontSize: 11, color: C.textDim, padding: "4px 8px 2px" }}>WISP id + 6-digit key needed once. After that, open chats with your own PIN.</div>
       </Panel>
 
       <div style={{ display: "grid", gap: 10 }}>
