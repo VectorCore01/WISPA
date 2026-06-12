@@ -1,9 +1,9 @@
 export const THEMES = {
   dark: {
     bg: "#0A0A0A", surface: "#141414", surface2: "#1C1C1C",
-    text: "#B3B3B3", textDim: "#8C8C88", textBright: "#FFFFFF",
+    text: "#EAEAEA", textDim: "#9A9A9A", textBright: "#FFFFFF",
     line: "#2A2A2A", lineSoft: "#1F1F1F",
-    accent: "#FFB300", onAccent: "#0A0A0A", danger: "#C75C3C",
+    accent: "#FFB300", onAccent: "#0A0A0A", danger: "#E0664A",
   },
 };
 

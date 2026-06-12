@@ -10,3 +10,7 @@ export function loadSession() {
 export function saveSession(data) {
   try { sessionStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch {}
 }
+
+export function clearSession() {
+  try { sessionStorage.removeItem(SAVE_KEY); } catch {}
+}

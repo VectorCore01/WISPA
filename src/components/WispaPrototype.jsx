@@ -5,7 +5,7 @@ import { capPerSender, CELL_MSG_PER_SENDER } from "../lib/cell.js";
 import { nowTime } from "../lib/time.js";
 import { seedCells, seedHiveMembers } from "../lib/seed.js";
 import { lookupPeer } from "../lib/directory.js";
-import { loadSession, saveSession } from "../lib/session.js";
+import { loadSession, saveSession, clearSession } from "../lib/session.js";
 import { t } from "../lib/translations.js";
 import { api, normCell } from "../lib/api.js";
 import Landing from "./Landing.jsx";
@@ -15,6 +15,7 @@ import Profile from "./Profile.jsx";
 import Onboard from "./Onboard.jsx";
 import Login from "./Login.jsx";
 import AppShell from "./AppShell.jsx";
+import IntroOverlay from "./IntroOverlay.jsx";
 
 export default function WispaPrototype() {
   const saved = loadSession();
@@ -23,7 +24,10 @@ export default function WispaPrototype() {
   const C = THEMES[mode];
 
   const [lang, setLang] = useState("en");
-  const [screen, setScreen] = useState(saved.screen && saved.screen !== "landing" ? saved.screen : "landing");
+  // On refresh, only a real logged-in app session is restored. Every pre-app
+  // screen (gatekeeper, choice, login…) falls back to the calculator cover,
+  // so reloading never exposes the gatekeeper.
+  const [screen, setScreen] = useState(saved.screen === "app" && saved.wispId ? "app" : "landing");
   const [tier, setTier] = useState(saved.tier || "wisp");
   const [seed, setSeed] = useState([]);
   const [seedConfirmed, setSeedConfirmed] = useState(false);
@@ -43,6 +47,7 @@ export default function WispaPrototype() {
   const isPro = tier === "pro";
   const mounted = useRef(false);
   const [visor, setVisor] = useState(false);
+  const [intro, setIntro] = useState(null); // "create" | "login" | null
   const prevRef = useRef(null);
 
   function showVisor() {
@@ -74,6 +79,7 @@ export default function WispaPrototype() {
       setHivePosts([]);
       setScreen("app");
       setTab("account");
+      setIntro("create");
       notify("Your free WISP is ready.");
     } else {
       const fake = genWispId();
@@ -88,6 +94,7 @@ export default function WispaPrototype() {
       setHivePosts([]);
       setScreen("app");
       setTab("account");
+      setIntro("create");
       notify("Offline mode — your WISP is local only.");
     }
   }
@@ -125,6 +132,7 @@ export default function WispaPrototype() {
         setHiveMembers([]);
         setScreen("app");
         setTab("cells");
+        setIntro("login");
         notify("WISP restored. Welcome back.");
         return;
       }
@@ -140,7 +148,28 @@ export default function WispaPrototype() {
     setHiveMembers([]);
     setScreen("app");
     setTab("cells");
+    setIntro("login");
     notify("Offline mode — restored locally.");
+  }
+
+  function logout() {
+    api.logout().catch(() => {});
+    clearSession();
+    setTier("wisp");
+    setWispId("");
+    setHiveId("");
+    setMsgKey("");
+    setUsername("");
+    setLoginPass("");
+    setSeed([]);
+    setCells([]);
+    setActiveCell(null);
+    setHiveCfg(null);
+    setHiveMembers([]);
+    setHivePosts([]);
+    setTab("cells");
+    setScreen("wisp-landing");
+    notify("Logged out.");
   }
 
   function changeName(name) {
@@ -268,7 +297,7 @@ export default function WispaPrototype() {
     hasHive: isPro && !!hiveId,
     tab, setTab, showVisor, notify, setScreen,
     cells, activeCell, setActiveCell, openCell, sendInCell, openCellAttachment, startNewCell, unlockCell,
-    startUpgrade, changeName,
+    startUpgrade, changeName, logout,
     hiveCfg, createHive, hiveMembers, approveMember, rejectMember, destroyHive,
     hivePosts, postToHive,
   };
@@ -279,14 +308,25 @@ export default function WispaPrototype() {
       background: C.bg,
       color: C.text,
       minHeight: "100vh",
+      fontSize: 16,
+      lineHeight: 1.5,
+      letterSpacing: "0.01em",
       WebkitFontSmoothing: "antialiased",
+      MozOsxFontSmoothing: "grayscale",
+      textRendering: "optimizeLegibility",
       transition: "background .3s, color .3s",
       backgroundImage: honeycombBg(C.lineSoft),
       backgroundSize: "56px 96px"
     }}>
       <style>{`
         * { box-sizing: border-box; }
-        button { font-family: inherit; cursor: pointer; border: none; }
+        html { overflow-y: scroll; scrollbar-gutter: stable; }
+        body { margin: 0; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        button, input, textarea, select { font-family: inherit; letter-spacing: inherit; }
+        button { cursor: pointer; border: none; }
+        h1, h2, h3, h4 { margin: 0; line-height: 1.2; }
+        p { margin: 0; }
+        input::placeholder, textarea::placeholder { color: ${C.textDim}; opacity: 0.7; }
         button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid ${C.accent}; outline-offset: 2px; }
         @keyframes rise { from { transform: translateY(8px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
         @keyframes drift { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-9px) } }
@@ -319,6 +359,10 @@ export default function WispaPrototype() {
       ) : screen === "app" ? (
         <AppShell {...shared} />
       ) : null}
+
+      {intro && (
+        <IntroOverlay C={C} variant={intro} name={username} onDone={() => setIntro(null)} />
+      )}
     </div>
   );
 }

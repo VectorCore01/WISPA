@@ -2,7 +2,24 @@ import { useState } from "react";
 import { FACE_MONO, ENGRAVE, HIVE_PRICE } from "../lib/theme.js";
 import { TermHead, Panel } from "./shared.jsx";
 
-export default function AccountTab({ C, tier, isPro, wispId, hiveId, username, msgKey, loginPass, changeName, startUpgrade }) {
+// A value that stays hidden behind asterisks until you press Reveal.
+// Used for the WISP id and message key — they're special, so kept private.
+function Secret({ C, value, size = 22, ls = "0.05em" }) {
+  const [show, setShow] = useState(false);
+  const masked = "*".repeat(Math.max((value || "").length, 6));
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+      <div style={{ fontFamily: FACE_MONO, fontSize: size, color: C.text, letterSpacing: ls, overflow: "hidden", textOverflow: "ellipsis" }}>
+        {show ? (value || "—") : masked}
+      </div>
+      <button onClick={() => setShow((s) => !s)} style={{ flexShrink: 0, background: "transparent", border: `1px solid ${C.line}`, borderRadius: 4, padding: "6px 12px", color: C.accent, fontSize: 11, ...ENGRAVE, letterSpacing: "0.08em" }}>
+        {show ? "Hide" : "Reveal"}
+      </button>
+    </div>
+  );
+}
+
+export default function AccountTab({ C, tier, isPro, wispId, hiveId, username, msgKey, loginPass, changeName, startUpgrade, logout }) {
   const [editing, setEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState(username);
 
@@ -48,13 +65,13 @@ export default function AccountTab({ C, tier, isPro, wispId, hiveId, username, m
       <Panel C={C} style={{ padding: 18, marginBottom: 16 }}>
         <div style={{ fontWeight: 700, marginBottom: 6 }}>Your WISP id <span style={{ color: C.textDim, fontWeight: 400, fontSize: 12 }}>· share to be reached</span></div>
         <p style={{ color: C.textDim, fontSize: 14, lineHeight: 1.5, marginBottom: 10 }}>Someone can only open a cell with you if they know <em>both</em> this id and your message key below.</p>
-        <div style={{ fontFamily: FACE_MONO, fontSize: 22, color: C.text, letterSpacing: "0.05em" }}>{wispId}</div>
+        <Secret C={C} value={wispId} size={22} ls="0.05em" />
       </Panel>
 
       <Panel C={C} style={{ padding: 18, marginBottom: 16 }}>
         <div style={{ fontWeight: 700, marginBottom: 6 }}>Your message key</div>
         <p style={{ color: C.textDim, fontSize: 14, lineHeight: 1.5, marginBottom: 10 }}>The 6-digit code others type (with your WISP id) to reach you. Share it only with people you want to hear from.</p>
-        <div style={{ fontFamily: FACE_MONO, fontSize: 26, color: C.text, letterSpacing: "0.3em" }}>{msgKey || "------"}</div>
+        <Secret C={C} value={msgKey} size={26} ls="0.3em" />
       </Panel>
 
       {isPro ? (
@@ -75,10 +92,23 @@ export default function AccountTab({ C, tier, isPro, wispId, hiveId, username, m
         </Panel>
       )}
 
-      <Panel C={C} style={{ padding: 18 }}>
+      <Panel C={C} style={{ padding: 18, marginBottom: 16 }}>
         <div style={{ fontWeight: 700, marginBottom: 6 }}>About this demo</div>
         <p style={{ color: C.textDim, fontSize: 14, lineHeight: 1.5 }}>This is a prototype. Messages, channels and payments are simulated and run only in your browser. Nothing is stored or sent.</p>
       </Panel>
+
+      <button onClick={logout} style={{
+        width: "100%", background: "transparent", color: C.danger,
+        border: `1px solid ${C.danger}55`, borderRadius: 8, padding: 14,
+        fontSize: 13, ...ENGRAVE, letterSpacing: "0.1em",
+      }}>
+        Log out
+      </button>
+      {!isPro && (
+        <p style={{ color: C.textDim, fontSize: 12, lineHeight: 1.5, marginTop: 10, textAlign: "center" }}>
+          A free WISP has no 24-word key — log back in with your WISP id and password.
+        </p>
+      )}
     </div>
   );
 }

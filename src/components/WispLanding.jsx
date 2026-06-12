@@ -8,7 +8,7 @@ export default function WispLanding({ C, onStart, onLight }) {
   const handleClick = () => {
     if (clicked) return;
     setClicked(true);
-    setTimeout(() => onStart(), 300);
+    setTimeout(() => onStart(), 460);
   };
 
   return (
@@ -21,16 +21,32 @@ export default function WispLanding({ C, onStart, onLight }) {
       padding: "0 24px",
       fontFamily: FACE_MONO,
       textAlign: "center",
-      cursor: "pointer",
       userSelect: "none",
       position: "relative",
       overflow: "hidden",
-    }} onClick={handleClick}>
-      <div style={{
-        animation: clicked ? "logoPop 0.3s ease forwards" : "drift 7s ease-in-out infinite",
-        opacity: clicked ? 0 : 1,
-        pointerEvents: clicked ? "none" : "auto",
-      }}>
+    }}>
+      {clicked && (
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
+          {[0, 0.09, 0.18].map((d, i) => (
+            <svg key={i} viewBox="0 0 100 100" width="160" height="160"
+              style={{ position: "absolute", animation: `hexRipple 0.55s ease-out ${d}s forwards`, opacity: 0 }}>
+              <polygon points="50,4 90,27 90,73 50,96 10,73 10,27" fill="none" stroke={C.accent} strokeWidth="2.5" />
+            </svg>
+          ))}
+        </div>
+      )}
+
+      <div
+        onClick={handleClick}
+        role="button"
+        aria-label="Enter WISPA"
+        title="Tap the mark to enter"
+        style={{
+          cursor: "pointer",
+          animation: clicked ? "logoPop 0.45s cubic-bezier(.4,0,.6,1) forwards" : "drift 7s ease-in-out infinite",
+          opacity: clicked ? 0 : 1,
+          pointerEvents: clicked ? "none" : "auto",
+        }}>
         <WaspLock size={144} C={C} />
       </div>
 
@@ -60,7 +76,11 @@ export default function WispLanding({ C, onStart, onLight }) {
         }
         @keyframes logoPop {
           0% { opacity: 1; transform: scale(1); }
-          100% { opacity: 0; transform: scale(1.5); }
+          100% { opacity: 0; transform: scale(2.3); }
+        }
+        @keyframes hexRipple {
+          0% { opacity: 0.5; transform: scale(0.7); }
+          100% { opacity: 0; transform: scale(3.4); }
         }
       `}</style>
     </div>
