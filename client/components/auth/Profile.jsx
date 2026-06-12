@@ -3,17 +3,21 @@ import { CalcButton, CellLogo } from "../app/shared.jsx";
 import { FACE_UI, FACE_MONO, ENGRAVE } from "../../lib/theme.js";
 import { t } from "../../lib/data/translations.js";
 
-export default function Profile({ C, lang, username, setUsername, loginPass, setLoginPass, onContinue, onBack, onCalc }) {
+export default function Profile({ C, lang, username, setUsername, loginPass, setLoginPass, onContinue, onGoPro, onBack, onCalc }) {
   const [error, setError] = useState("");
 
-  function handleContinue() {
+  // Both paths need a valid name + password; Pro additionally gets the 12-word key.
+  function validate() {
     const name = username.trim();
     const pass = loginPass.trim();
-    if (name.length < 3) { setError(t(lang, "Pick a username with at least 3 characters.")); return; }
-    if (pass.length < 4) { setError(t(lang, "Your password needs at least 4 characters.")); return; }
+    if (name.length < 3) { setError(t(lang, "Pick a username with at least 3 characters.")); return false; }
+    if (pass.length < 4) { setError(t(lang, "Your password needs at least 4 characters.")); return false; }
     setError("");
-    onContinue();
+    return true;
   }
+
+  function handleContinue() { if (validate()) onContinue(); }
+  function handleGoPro() { if (validate()) onGoPro(); }
 
   const field = {
     width: "100%", background: "transparent", border: "none",
@@ -67,8 +71,21 @@ export default function Profile({ C, lang, username, setUsername, loginPass, set
       {error && <div style={{ color: C.danger, fontSize: 13, marginBottom: 12 }}>{error}</div>}
 
       <button onClick={handleContinue} style={{ width: "100%", padding: 15, borderRadius: 4, fontSize: 13, ...ENGRAVE, letterSpacing: "0.12em", background: C.text, color: C.bg, border: "none" }}>
-        {t(lang, "Continue")}
+        {t(lang, "Continue as FREE WISP")}
       </button>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "14px 0" }}>
+        <div style={{ flex: 1, height: 1, background: C.line }} />
+        <span style={{ fontSize: 11, color: C.textDim, ...ENGRAVE, letterSpacing: "0.18em" }}>{t(lang, "or")}</span>
+        <div style={{ flex: 1, height: 1, background: C.line }} />
+      </div>
+
+      <button onClick={handleGoPro} style={{ width: "100%", padding: 15, borderRadius: 4, fontSize: 13, ...ENGRAVE, letterSpacing: "0.12em", background: C.accent, color: C.onAccent, border: "none" }}>
+        {t(lang, "Continue as WISP PRO")}
+      </button>
+      <p style={{ textAlign: "center", color: C.textDim, fontSize: 12, lineHeight: 1.5, marginTop: 12 }}>
+        {t(lang, "WISP Pro adds a 12-word recovery key, your own Hive, and video & file sharing. You'll confirm the 12 words next.")}
+      </p>
     </div>
   );
 }

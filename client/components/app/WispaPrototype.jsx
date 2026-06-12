@@ -55,6 +55,9 @@ export default function WispaPrototype() {
 
   const [seed, setSeed] = useState([]);
   const [seedConfirmed, setSeedConfirmed] = useState(false);
+  // The 12-word screen is shared by two flows: "signup" (create a fresh Pro account
+  // from identity setup) and "upgrade" (an existing free WISP going Pro).
+  const [onboardMode, setOnboardMode] = useState("upgrade");
   const [wispId, setWispId] = useState(saved.wispId || "");
   const [hiveId, setHiveId] = useState(saved.hiveId || "");
   const [msgKey, setMsgKey] = useState(saved.msgKey || "");
@@ -237,7 +240,43 @@ export default function WispaPrototype() {
     }
   }
 
-  function startUpgrade() { setSeed(genSeed()); setSeedConfirmed(false); setScreen("onboard"); }
+  function startUpgrade() { setSeed(genSeed()); setSeedConfirmed(false); setOnboardMode("upgrade"); setScreen("onboard"); }
+  // Chosen on "Set up your identity" → confirm the 12 words → create a Pro account.
+  function startProSignup() { setSeed(genSeed()); setSeedConfirmed(false); setOnboardMode("signup"); setScreen("onboard"); }
+
+  // Create a brand-new Pro account after the 12 words are confirmed. Pro is a
+  // purchase (payment is a later step), so there's no 24h free-device limit here.
+  // The server still registers a base account; the Pro tier + permanent Honey are
+  // applied client-side for now.
+  async function finishProSignup() {
+    const enterPro = (id, key) => {
+      setTier("pro");
+      setWispId(id);
+      setMsgKey(key);
+      setHiveId("");
+      setCells([]);
+      setHiveCfg(null);
+      setHiveMembers([]);
+      setHivePosts([]);
+      setSeed([]);
+      grantWelcomeHoney();
+      makeHoneyPermanent(); // Pro Honey no longer expires
+      setScreen("app");
+      setTab("cells");
+      setIntro("create");
+    };
+    const res = await api.register(username || "anon", loginPass || "demo").catch(() => null);
+    if (res) {
+      setUsername(res.username);
+      enterPro(res.wispId, res.msgKey);
+      notify("You're WISP Pro now. Keep your 12 words safe — they're your only way back.");
+    } else {
+      setUsername(username || "anon");
+      enterPro(genWispId(), genMsgKey());
+      notify("Offline mode — your WISP Pro is local only.");
+    }
+  }
+
   function finishUpgrade() {
     setTier("pro");
     setHiveId("");
@@ -511,9 +550,9 @@ export default function WispaPrototype() {
       ) : screen === "choice" ? (
         <EntryChoice C={C} mode={mode} toggleMode={toggleMode} lang={lang} setLang={setLang} onCreate={startProfile} onLogin={startLogin} onBack={() => setScreen("landing")} onCalc={showVisor} />
       ) : screen === "profile" ? (
-        <Profile C={C} lang={lang} username={username} setUsername={setUsername} loginPass={loginPass} setLoginPass={setLoginPass} onContinue={finishFreeWisp} onBack={() => setScreen("choice")} onCalc={showVisor} />
+        <Profile C={C} lang={lang} username={username} setUsername={setUsername} loginPass={loginPass} setLoginPass={setLoginPass} onContinue={finishFreeWisp} onGoPro={startProSignup} onBack={() => setScreen("choice")} onCalc={showVisor} />
       ) : screen === "onboard" ? (
-        <Onboard C={C} lang={lang} seed={seed} confirmed={seedConfirmed} setConfirmed={setSeedConfirmed} onFinish={finishUpgrade} onBack={() => setScreen("app")} />
+        <Onboard C={C} lang={lang} seed={seed} confirmed={seedConfirmed} setConfirmed={setSeedConfirmed} onFinish={onboardMode === "signup" ? finishProSignup : finishUpgrade} onBack={() => setScreen(onboardMode === "signup" ? "profile" : "app")} />
       ) : screen === "login" ? (
         <Login C={C} lang={lang} onFinish={finishLogin} onBack={() => setScreen("choice")} onCalc={showVisor} />
       ) : screen === "app" ? (
